@@ -143,7 +143,10 @@ def rebuild(root: Path, prune: bool = False, dry_run: bool = False) -> dict:
     by_sha = {e["sha256"]: entry_id for entry_id, e in entries.items()}
     report: dict[str, list] = {"added": [], "missing": [], "pruned": [], "skipped": []}
 
-    for path in sorted((root / "media").iterdir()):
+    media_dir = root / "media"
+    if not media_dir.is_dir() and not dry_run:
+        media_dir.mkdir(parents=True)
+    for path in sorted(media_dir.iterdir()) if media_dir.is_dir() else []:
         if not path.is_file() or path.name.startswith(".") or f"media/{path.name}" in known:
             continue
         ext = path.suffix.lower()

@@ -50,3 +50,14 @@ def test_inconsistency_is_a_warning(lib, make_png):
 
     assert ok
     assert any(line.startswith("[warn]") and "1 missing" in line and "rebuild" in line for line in lines)
+
+
+def test_missing_media_folder_is_reported(lib, make_png):
+    media.ingest(lib, [make_png()])
+    (lib / "media" / next(p.name for p in (lib / "media").iterdir())).unlink()
+    (lib / "media").rmdir()
+
+    lines, ok = doctor.run_doctor(lib)
+
+    assert not ok
+    assert any(line.startswith("[FAIL] media/ exists") and "rebuild" in line for line in lines)

@@ -134,3 +134,18 @@ def test_read_payload_errors(tmp_path):
         tagging.read_payload(str(bad))
     with pytest.raises(LibraryError, match="Cannot read payload"):
         tagging.read_payload(str(tmp_path / "missing.json"))
+
+
+def test_read_payload_from_utf16_file(tmp_path, payload):
+    """Windows PowerShell 5.1 `Out-File` and `>` write UTF-16LE with a BOM."""
+    payload["text"] = "café"
+    path = tmp_path / "tag.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-16")
+    assert tagging.read_payload(str(path)) == payload
+
+
+def test_read_payload_non_utf8_file_is_a_clear_error(tmp_path):
+    path = tmp_path / "ansi.json"
+    path.write_bytes('{"text": "café"}'.encode("cp1252"))
+    with pytest.raises(LibraryError, match="UTF-8"):
+        tagging.read_payload(str(path))

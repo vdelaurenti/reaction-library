@@ -66,3 +66,16 @@ def test_rebuild_skips_duplicates_and_non_images(lib, make_png):
     reasons = {s["path"].replace("\\", "/").rsplit("/", 1)[-1]: s["reason"] for s in report["skipped"]}
     assert reasons == {"copy.png": f"duplicate of {entry_id}", "notes.txt": "unsupported type .txt"}
     assert report["added"] == []
+
+
+def test_rebuild_without_media_folder_reports_missing_and_recreates_it(lib, make_png):
+    entry_id = media.ingest(lib, [make_png()])["added"][0]["id"]
+    shutil.rmtree(lib / "media")
+
+    assert media.rebuild(lib, dry_run=True)["missing"] == [entry_id]
+    assert not (lib / "media").exists()
+
+    report = media.rebuild(lib)
+
+    assert report["missing"] == [entry_id]
+    assert (lib / "media").is_dir()

@@ -95,3 +95,11 @@ def test_now_iso_format():
 def test_skill_dir_points_at_skill_folder():
     assert library.SKILL_DIR.name == "reaction-library"
     assert (library.SKILL_DIR / "scripts").is_dir()
+
+
+def test_relative_env_override_resolves_to_absolute(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("REACTION_LIBRARY", "rel-lib")
+    root = library.library_root()
+    assert root.is_absolute()
+    assert root == (tmp_path / "rel-lib").resolve()

@@ -21,7 +21,7 @@ class LibraryError(Exception):
 def library_root() -> Path:
     override = os.environ.get(ENV_VAR)
     if override:
-        return Path(override).expanduser()
+        return Path(override).expanduser().resolve()
     return Path.home() / ".reaction-library"
 
 

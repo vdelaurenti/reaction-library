@@ -65,6 +65,7 @@ def run_doctor(root: Path) -> tuple[list[str], bool]:
     except LibraryError as e:
         check(False, f"index.json: {e}", "move index.json aside, run `init`, then `rebuild` (tags will be lost)")
         return lines, ok
+    check((root / "media").is_dir(), "media/ exists", "run `rebuild` to recreate it and see which entries lost their files")
     counts = Counter(e.get("status") for e in index["entries"].values())
     summary = ", ".join(f"{counts[s]} {s}" for s in STATUSES)
     check(True, f"index.json: {len(index['entries'])} entries ({summary})")

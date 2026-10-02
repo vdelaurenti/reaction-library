@@ -41,12 +41,21 @@ def validate_payload(payload: object) -> list[str]:
     return errors
 
 
+def _decode(data: bytes) -> str:
+    """UTF-8 (with or without BOM), or UTF-16 with a BOM as Windows PowerShell 5.1 writes."""
+    encoding = "utf-16" if data.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
+    try:
+        return data.decode(encoding)
+    except UnicodeDecodeError as e:
+        raise LibraryError(f"Payload file is not UTF-8 text ({e}). Save it as UTF-8.") from e
+
+
 def read_payload(source: str, stdin: TextIO | None = None) -> object:
     try:
         if source == "-":
             raw = (stdin or sys.stdin).read()
         else:
-            raw = Path(source).read_text(encoding="utf-8-sig")
+            raw = _decode(Path(source).read_bytes())
     except OSError as e:
         raise LibraryError(f"Cannot read payload: {e}") from e
     try:
