@@ -1,0 +1,17 @@
+[project]
+name = "reaction-library"
+version = "0.1.0"
+description = "An Agent Skill that tags and retrieves a personal library of reaction GIFs and memes."
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = ["Pillow>=10", "jsonschema>=4.18"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["skills/reaction-library/scripts"]
