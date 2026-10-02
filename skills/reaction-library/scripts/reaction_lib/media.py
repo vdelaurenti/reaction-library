@@ -133,3 +133,46 @@ def extract_frames(root: Path, entry: dict) -> dict:
                 im.convert("RGBA").save(dest)
                 frames.append(dest)
     return {"id": entry["id"], "workdir": str(workdir), "frames": [str(p) for p in frames]}
+
+
+def rebuild(root: Path, prune: bool = False, dry_run: bool = False) -> dict:
+    """Reconcile index.json with media/. Existing tags are never touched."""
+    index = load_index(root)
+    entries = index["entries"]
+    known = {e["file"] for e in entries.values()}
+    by_sha = {e["sha256"]: entry_id for entry_id, e in entries.items()}
+    report: dict[str, list] = {"added": [], "missing": [], "pruned": [], "skipped": []}
+
+    for path in sorted((root / "media").iterdir()):
+        if not path.is_file() or path.name.startswith(".") or f"media/{path.name}" in known:
+            continue
+        ext = path.suffix.lower()
+        if ext not in SUPPORTED_EXTS:
+            report["skipped"].append({"path": str(path), "reason": f"unsupported type {ext or '(no extension)'}"})
+            continue
+        try:
+            kind = detect_kind(path)
+        except LibraryError as e:
+            report["skipped"].append({"path": str(path), "reason": str(e)})
+            continue
+        sha = sha256_file(path)
+        if sha in by_sha:
+            report["skipped"].append({"path": str(path), "reason": f"duplicate of {by_sha[sha]}"})
+            continue
+        entry_id = assign_id(sha, entries)
+        by_sha[sha] = entry_id
+        report["added"].append({"id": entry_id, "path": str(path)})
+        if not dry_run:
+            entries[entry_id] = make_entry(entry_id, f"media/{path.name}", path.name, sha, kind)
+
+    report["missing"] = sorted(i for i, e in entries.items() if not entry_path(root, e).exists())
+    if prune:
+        report["pruned"] = list(report["missing"])
+        if not dry_run:
+            for entry_id in report["pruned"]:
+                del entries[entry_id]
+                shutil.rmtree(root / ".frames" / entry_id, ignore_errors=True)
+
+    if not dry_run:
+        save_index(root, index)
+    return report
