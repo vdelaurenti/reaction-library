@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "reaction-library tag payload",
+  "description": "What the model writes for one library entry. humor_mechanisms and emotions must also be terms from vocabulary.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "humor_mechanisms", "emotions", "use_when"],
+  "properties": {
+    "description": {"type": "string", "pattern": "\\S", "maxLength": 300},
+    "humor_mechanisms": {
+      "type": "array", "items": {"type": "string"},
+      "minItems": 1, "maxItems": 3, "uniqueItems": true
+    },
+    "emotions": {
+      "type": "array", "items": {"type": "string"},
+      "minItems": 1, "maxItems": 3, "uniqueItems": true
+    },
+    "use_when": {
+      "type": "array", "items": {"type": "string", "pattern": "\\S"},
+      "minItems": 1, "maxItems": 5
+    },
+    "avoid_when": {
+      "type": "array", "items": {"type": "string", "pattern": "\\S"},
+      "maxItems": 5
+    },
+    "tags": {
+      "type": "array", "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9 '-]*$"},
+      "maxItems": 10, "uniqueItems": true
+    },
+    "text": {"type": ["string", "null"]}
+  }
+}
