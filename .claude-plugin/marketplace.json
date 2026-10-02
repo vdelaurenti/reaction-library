@@ -1,0 +1,16 @@
+{
+  "name": "reaction-library",
+  "owner": {
+    "name": "Vincent Delaurenti"
+  },
+  "metadata": {
+    "description": "Tag and retrieve a personal library of reaction GIFs and memes."
+  },
+  "plugins": [
+    {
+      "name": "reaction-library",
+      "source": "./",
+      "description": "Tag and retrieve a personal library of reaction GIFs and memes."
+    }
+  ]
+}
