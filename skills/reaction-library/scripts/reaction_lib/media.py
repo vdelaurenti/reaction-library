@@ -9,10 +9,11 @@ from pathlib import Path
 
 from PIL import Image
 
-from .library import LibraryError, init_library, load_index, now_iso, save_index
+from .library import LibraryError, entry_path, init_library, load_index, now_iso, save_index
 
 SUPPORTED_EXTS = frozenset({".gif", ".png", ".jpg", ".jpeg", ".webp"})
 ID_LEN = 10
+MAX_FRAMES = 4
 
 
 def sha256_file(path: Path) -> str:
@@ -104,3 +105,31 @@ def ingest(root: Path, paths: list[Path], move: bool = False) -> dict:
         report["added"].append({"id": entry_id, "path": str(src), "kind": kind})
 
     return report
+
+
+def keyframe_indices(n_frames: int, k: int = MAX_FRAMES) -> list[int]:
+    """Up to k evenly spaced frame indices, always including the first and last."""
+    if n_frames <= k:
+        return list(range(n_frames))
+    return sorted({round(i * (n_frames - 1) / (k - 1)) for i in range(k)})
+
+
+def extract_frames(root: Path, entry: dict) -> dict:
+    src = entry_path(root, entry)
+    if not src.exists():
+        raise LibraryError(f"Media file missing for {entry['id']} ({entry['file']}). Run `rebuild`.")
+    workdir = root / ".frames" / entry["id"]
+    workdir.mkdir(parents=True, exist_ok=True)
+    if entry["kind"] == "static":
+        frames = [src]
+    else:
+        for old in workdir.glob("frame-*.png"):
+            old.unlink()
+        frames = []
+        with Image.open(src) as im:
+            for n, index in enumerate(keyframe_indices(im.n_frames)):
+                im.seek(index)
+                dest = workdir / f"frame-{n}.png"
+                im.convert("RGBA").save(dest)
+                frames.append(dest)
+    return {"id": entry["id"], "workdir": str(workdir), "frames": [str(p) for p in frames]}
