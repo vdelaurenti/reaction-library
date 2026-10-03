@@ -105,9 +105,18 @@ def test_search_and_catalog(run, lib, make_png, tmp_path, payload):
     result = _json(out)
     assert code == 0 and result["query"] == "deploy fails"
     assert [r["id"] for r in result["results"]] == [entry_id]
+    assert result["total_matches"] == 1
 
-    code, out, _ = run("catalog")
-    assert code == 0 and out.startswith(f"{entry_id} | ")
+    code, out, _ = run("search", "deploy fails", "--exclude", f"{entry_id},other")
+    assert _json(out)["results"] == [] and _json(out)["total_matches"] == 0
+
+    code, out, _ = run("catalog", "--kind", "static")
+    header, line = out.splitlines()
+    assert code == 0 and header == f"# library: {lib}"
+    assert line.startswith(f"{entry_id} | static | media/{entry_id}.png | ")
+
+    code, out, _ = run("catalog", "--kind", "animated")
+    assert out.strip() == "(no tagged entries)"
 
 
 def test_search_unknown_filter_term_lists_allowed(run, lib):

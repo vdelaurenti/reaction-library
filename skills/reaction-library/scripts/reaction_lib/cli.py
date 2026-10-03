@@ -28,6 +28,10 @@ def _positive_int(value: str) -> int:
     return number
 
 
+def _id_list(value: str) -> list[str]:
+    return [part.strip() for part in value.split(",") if part.strip()]
+
+
 def cmd_init(root: Path, args: argparse.Namespace) -> int:
     emit({"library": str(init_library(root))})
     return 0
@@ -82,16 +86,22 @@ def cmd_rebuild(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_search(root: Path, args: argparse.Namespace) -> int:
-    from .search import search
+def _check_filter_terms(args: argparse.Namespace) -> None:
     from .tagging import load_vocabulary
 
     vocab = load_vocabulary()
     for field, value in (("humor_mechanisms", args.humor), ("emotions", args.emotion)):
         if value is not None and value not in vocab[field]:
             raise LibraryError(f"Unknown {field} term '{value}'. Allowed: {', '.join(vocab[field])}")
-    results = search(root, args.query, humor=args.humor, emotion=args.emotion, kind=args.kind, limit=args.limit)
-    emit({"query": args.query, "results": results})
+
+
+def cmd_search(root: Path, args: argparse.Namespace) -> int:
+    from .search import search_page
+
+    _check_filter_terms(args)
+    page = search_page(root, args.query, humor=args.humor, emotion=args.emotion, kind=args.kind,
+                       limit=args.limit, exclude=args.exclude)
+    emit({"query": args.query, **page})
     return 0
 
 
@@ -103,8 +113,9 @@ def cmd_get(root: Path, args: argparse.Namespace) -> int:
 def cmd_catalog(root: Path, args: argparse.Namespace) -> int:
     from .search import catalog_lines
 
-    lines = catalog_lines(root)
-    print("\n".join(lines) if lines else "(no tagged entries)")
+    _check_filter_terms(args)
+    lines = catalog_lines(root, humor=args.humor, emotion=args.emotion, kind=args.kind)
+    print("\n".join([f"# library: {root}", *lines]) if lines else "(no tagged entries)")
     return 0
 
 
@@ -144,15 +155,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status", choices=STATUSES)
     p = add("rebuild", cmd_rebuild, "reconcile the index with media/")
     p.add_argument("--prune", action="store_true", help="drop entries whose files are missing")
+    def add_filters(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--humor")
+        p.add_argument("--emotion")
+        p.add_argument("--kind", choices=("animated", "static"))
+
     p = add("search", cmd_search, "find reactions for a moment")
     p.add_argument("query")
-    p.add_argument("--humor")
-    p.add_argument("--emotion")
-    p.add_argument("--kind", choices=("animated", "static"))
+    add_filters(p)
     p.add_argument("--limit", type=_positive_int, default=5)
+    p.add_argument("--exclude", type=_id_list, action="extend", default=[],
+                   help="comma-separated ids to leave out, e.g. ones already sent")
     p = add("get", cmd_get, "show one entry")
     p.add_argument("id")
-    add("catalog", cmd_catalog, "one line per tagged entry")
+    p = add("catalog", cmd_catalog, "one line per tagged entry")
+    add_filters(p)
     add("doctor", cmd_doctor, "check the environment and library")
     return parser
 

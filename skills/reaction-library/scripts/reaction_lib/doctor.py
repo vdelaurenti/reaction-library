@@ -48,7 +48,7 @@ def run_doctor(root: Path) -> tuple[list[str], bool]:
     for module in ("PIL", "jsonschema"):
         deps_ok &= check(importlib.util.find_spec(module) is not None, f"{module} importable",
                          "run through `uv run` so dependencies are installed")
-    for name in ("vocabulary.json", "schema.json"):
+    for name in ("vocabulary.json", "schema.json", "synonyms.json"):
         try:
             json.loads((SKILL_DIR / name).read_text(encoding="utf-8"))
             check(True, f"{name} parses")

@@ -65,10 +65,12 @@ Example:
 ## Finding a reaction
 
 1. Run `search "<the moment in a few words>"`. Add `--emotion <term>`, `--humor <term>`, or `--kind animated|static` when the user's intent is clear.
-2. Search matches words literally. If results are thin, try two or three phrasings: the situation, the feeling, words likely to be in a caption.
-3. For a small library (roughly under 150 tagged entries) you can run `catalog` instead and choose from the whole list.
-4. Read each candidate's `use_when` and `avoid_when`, then pick the best one. If nothing really fits, say so; don't force a weak match.
-5. Return the result:
+2. Search matches word forms ("dancing" finds "dance") and expands common words with `<skill-dir>/synonyms.json`, which also merges known phrases ("burned out", "long day") into one word. If a two-word phrase keeps matching the wrong entries, add it to `phrases` there. Words that are rare in the library count for more. The output's `total_matches` says how many entries matched beyond the ones shown. If results are thin, try two or three phrasings: the situation, the feeling, words likely to be in a caption.
+3. For a mood rather than a moment ("I'm chilling, send me something"), filter by emotion with an empty or short query: `search "" --emotion joy --kind animated`.
+4. When the user asks for "another", rerun the same search with `--exclude <id>,<id>` listing everything already sent in this conversation.
+5. For a small library (roughly under 75 tagged entries) you can run `catalog` instead and choose from the whole list. It accepts the same `--emotion`, `--humor` and `--kind` filters. Its first line gives the library folder; join it with each line's file (`media/<id>.<ext>`) to get the path.
+6. Read each candidate's `use_when` and `avoid_when`, then pick the best one. If nothing really fits, say so; don't force a weak match.
+7. Return the result:
    - In chat: give the `path` and a one-line reason it fits.
    - For another tool or channel: hand over the absolute `path`, plus the `text` if useful.
 

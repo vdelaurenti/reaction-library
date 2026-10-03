@@ -1,0 +1,32 @@
+{
+  "description": "Search expands a query word to the other words in its group, at half weight. Add words or groups freely; any word form works (chilling, chill). Phrases are rewritten to one word, in queries and tags alike, before anything else.",
+  "phrases": {
+    "burned out": "burnout",
+    "burnt out": "burnout",
+    "worn out": "exhausted",
+    "wiped out": "exhausted",
+    "long day": "tired",
+    "peace out": "goodbye",
+    "log off": "goodbye",
+    "logging off": "goodbye",
+    "heading out": "goodbye"
+  },
+  "groups": [
+    ["upbeat", "happy", "cheerful", "joy", "excited", "hyped", "pumped", "energetic", "stoked"],
+    ["chill", "relax", "calm", "lazy", "unwind", "cozy", "lounge", "mellow"],
+    ["celebrate", "party", "victory", "hooray", "woohoo"],
+    ["dance", "boogie", "groove", "shimmy"],
+    ["angry", "mad", "furious", "rage", "pissed"],
+    ["sad", "upset", "bummed", "down", "miss"],
+    ["tired", "exhausted", "sleepy", "fried", "drained", "burnout", "nap"],
+    ["funny", "hilarious", "lol", "laugh"],
+    ["goodbye", "bye", "leaving", "peace", "later", "logging"],
+    ["hello", "hi", "hey", "greeting", "welcome"],
+    ["thanks", "thank", "grateful", "appreciate", "gratitude"],
+    ["agree", "exactly", "preach", "amen", "right"],
+    ["shocked", "surprised", "wow", "omg", "stunned"],
+    ["confused", "huh", "lost", "puzzled"],
+    ["awkward", "cringe", "embarrassed", "yikes"],
+    ["approve", "approval", "nice", "great", "awesome", "excellent"]
+  ]
+}

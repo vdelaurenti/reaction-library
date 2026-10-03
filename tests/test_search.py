@@ -47,7 +47,7 @@ def test_use_when_outranks_description(lib, add_tagged):
     results = search.search(lib, "printer")
 
     assert [r["id"] for r in results] == [in_use_when, in_description]
-    assert results[0]["score"] == 3 and results[1]["score"] == 1
+    assert results[0]["score"] == pytest.approx(3 * results[1]["score"])
     assert results[0]["path"] == str(lib / "media" / f"{in_use_when}.png")
 
 
@@ -100,6 +100,91 @@ def test_custom_scorer_is_used(lib, add_tagged):
     assert [r["id"] for r in results] == [target]
 
 
+@pytest.mark.parametrize("words", [
+    ("dance", "dancing", "dances"),
+    ("party", "partying", "parties"),
+    ("celebrate", "celebrating", "celebration", "celebrates"),
+    ("relax", "relaxing", "relaxed"),
+    ("chill", "chilling"),
+    ("hype", "hyped"),
+    ("excited", "exciting", "excitement"),
+    ("happy", "happiness"),
+    ("win", "wins", "winning"),
+    ("can't", "cant"),
+])
+def test_stem_conflates_word_forms(words):
+    assert len({search.stem(w) for w in words}) == 1
+
+
+def test_stem_leaves_short_words_alone():
+    assert search.stem("yes") == "yes"
+    assert search.stem("red") == "red"
+
+
+def test_search_matches_other_word_forms(lib, add_tagged):
+    target = add_tagged(use_when=["happy dance after a win"])
+    assert [r["id"] for r in search.search(lib, "dancing")] == [target]
+    assert [r["id"] for r in search.search(lib, "winning")] == [target]
+
+
+def test_synonyms_expand_query_at_lower_weight(lib, add_tagged):
+    synonym_only = add_tagged(use_when=["relaxing with coffee"])
+    exact = add_tagged(use_when=["just chilling"])
+
+    results = search.search(lib, "chill")
+
+    assert [r["id"] for r in results] == [exact, synonym_only]
+    assert results[1]["score"] < results[0]["score"]
+
+
+def test_synonym_reaches_emotion_terms(lib, add_tagged):
+    joyful = add_tagged(emotions=["joy", "excitement"], use_when=["good news"])
+    assert [r["id"] for r in search.search(lib, "upbeat")] == [joyful]
+
+
+def test_rare_words_outweigh_common_ones(lib, add_tagged):
+    for _ in range(4):
+        add_tagged(use_when=["good morning"])
+    rare = add_tagged(use_when=["a printer jams"])
+    both = add_tagged(use_when=["good printer"])
+
+    ids = [r["id"] for r in search.search(lib, "good printer")]
+
+    assert ids[:2] == [both, rare]
+
+
+def test_phrases_are_searched_as_one_word(lib, add_tagged):
+    tired = add_tagged(use_when=["exhausted after a long day"])
+    add_tagged(use_when=["the server room is burning"])
+    add_tagged(use_when=["heading out for lunch"])
+
+    assert [r["id"] for r in search.search(lib, "burned out")] == [tired]
+
+
+def test_filler_words_do_not_match(lib, add_tagged):
+    add_tagged(use_when=["needs some spending money"])
+    nap = add_tagged(tags=["nap"])
+    actor = add_tagged(description="Will Ferrell yells at a referee")
+    add_tagged(text="I will never forget it")
+
+    assert [r["id"] for r in search.search(lib, "need a nap")] == [nap]
+    assert [r["id"] for r in search.search(lib, "will ferrell")] == [actor]
+
+
+def test_exclude_skips_ids(lib, add_tagged):
+    first = add_tagged(use_when=["coffee time"])
+    second = add_tagged(use_when=["coffee time"])
+    assert [r["id"] for r in search.search(lib, "coffee", exclude=[first])] == [second]
+
+
+def test_search_page_reports_total_matches(lib, add_tagged):
+    for _ in range(4):
+        add_tagged(use_when=["coffee time"])
+    page = search.search_page(lib, "coffee", limit=2)
+    assert page["total_matches"] == 4
+    assert len(page["results"]) == 2
+
+
 def test_catalog_lines(lib, make_png, add_tagged):
     media.ingest(lib, [make_png()])
     entry_id = add_tagged(
@@ -110,8 +195,18 @@ def test_catalog_lines(lib, make_png, add_tagged):
     )
 
     assert search.catalog_lines(lib) == [
-        f"{entry_id} | Cat / knocks glass over | slapstick,chaos | joy | chaos at work; friday"
+        f"{entry_id} | static | media/{entry_id}.png | Cat / knocks glass over | slapstick,chaos | joy | chaos at work; friday"
     ]
+
+
+def test_catalog_filters(lib, add_tagged):
+    joyful = add_tagged(kind="animated", emotions=["joy"])
+    add_tagged(emotions=["joy"])
+    add_tagged(kind="animated", emotions=["panic"])
+
+    lines = search.catalog_lines(lib, emotion="joy", kind="animated")
+
+    assert [line.split(" | ")[0] for line in lines] == [joyful]
 
 
 def test_catalog_empty(lib):
