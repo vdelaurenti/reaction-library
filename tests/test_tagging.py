@@ -19,9 +19,19 @@ def _entry(lib, entry_id):
 
 def test_vocabulary_has_starter_terms():
     vocab = tagging.load_vocabulary()
-    assert len(vocab["humor_mechanisms"]) == 14
-    assert len(vocab["emotions"]) == 19
+    assert len(vocab["humor_mechanisms"]) == 18
+    assert len(vocab["emotions"]) == 24
     assert "subverted-expectation" in vocab["humor_mechanisms"]
+    assert {"catchphrase", "wordplay", "incongruity"} <= set(vocab["humor_mechanisms"])
+    assert {"contentment", "exhaustion", "gratitude"} <= set(vocab["emotions"])
+
+
+def test_vocabulary_has_no_duplicates_and_no_catch_all_terms():
+    vocab = tagging.load_vocabulary()
+    for terms in vocab.values():
+        assert len(terms) == len(set(terms))
+    # "relatable" described nearly every reaction, so it never told two entries apart.
+    assert "relatable" not in vocab["humor_mechanisms"]
 
 
 def test_schema_is_a_valid_json_schema():

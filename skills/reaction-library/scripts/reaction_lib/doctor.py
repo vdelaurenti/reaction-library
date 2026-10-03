@@ -70,6 +70,19 @@ def run_doctor(root: Path) -> tuple[list[str], bool]:
     summary = ", ".join(f"{counts[s]} {s}" for s in STATUSES)
     check(True, f"index.json: {len(index['entries'])} entries ({summary})")
 
+    try:
+        vocab = json.loads((SKILL_DIR / "vocabulary.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        vocab = None
+    if vocab is not None:
+        stale = sorted(
+            e["id"] for e in index["entries"].values()
+            if any(t not in vocab[f] for f in ("humor_mechanisms", "emotions") for t in e.get(f, []))
+        )
+        shown = ", ".join(stale[:10]) + (", ..." if len(stale) > 10 else "")
+        check(not stale, f"tags use current vocabulary: {len(stale)} entries use retired terms" + (f" ({shown})" if stale else ""),
+              "re-tag them; `retag <id ...>` clears their tags", fatal=False)
+
     if deps_ok:
         from .media import rebuild
 

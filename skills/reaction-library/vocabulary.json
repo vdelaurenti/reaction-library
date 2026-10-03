@@ -2,12 +2,14 @@
   "humor_mechanisms": [
     "exaggeration", "deadpan", "absurdism", "schadenfreude", "irony",
     "sarcasm", "awkwardness", "slapstick", "subverted-expectation", "cringe",
-    "understatement", "relatable", "wholesome", "chaos"
+    "understatement", "wholesome", "chaos", "catchphrase", "wordplay",
+    "incongruity", "nostalgia", "misplaced-confidence"
   ],
   "emotions": [
     "exasperation", "triumph", "disbelief", "smugness", "panic", "approval",
     "disapproval", "confusion", "excitement", "despair", "shock",
     "embarrassment", "relief", "anticipation", "indifference", "rage",
-    "joy", "affection", "boredom"
+    "joy", "affection", "boredom", "contentment", "exhaustion", "sadness",
+    "gratitude", "nostalgia"
   ]
 }

@@ -20,6 +20,18 @@ def test_healthy_library(lib, make_png):
     assert "1 entries (1 untagged, 0 tagged, 0 reviewed)" in text
 
 
+def test_retired_vocabulary_terms_warn(lib, make_png):
+    entry_id = media.ingest(lib, [make_png()])["added"][0]["id"]
+    index = library.load_index(lib)
+    index["entries"][entry_id].update(status="tagged", humor_mechanisms=["relatable"], emotions=["joy"])
+    library.save_index(lib, index)
+
+    lines, ok = doctor.run_doctor(lib)
+
+    assert ok
+    assert any(line.startswith("[warn] tags use current vocabulary: 1 entries") and entry_id in line for line in lines)
+
+
 def test_missing_library_suggests_init(lib):
     lines, ok = doctor.run_doctor(lib)
     assert not ok
