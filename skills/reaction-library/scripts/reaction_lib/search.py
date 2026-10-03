@@ -180,22 +180,57 @@ def search(root: Path, query: str, **kwargs) -> list[dict]:
     return search_page(root, query, **kwargs)["results"]
 
 
+BRIEF_FIELDS = ("id", "path", "description", "emotions", "use_when", "avoid_when", "text", "score")
+BRIEF_DESCRIPTION = 70
+BRIEF_USE_WHEN = 3
+
+
+def brief_entry(result: dict) -> dict:
+    """A search result cut down to what choosing a reaction needs."""
+    return {k: result.get(k) for k in BRIEF_FIELDS}
+
+
 def _clean(value: str) -> str:
     return " ".join(value.replace("|", "/").split())
 
 
-def catalog_lines(root: Path, humor: str | None = None, emotion: str | None = None, kind: str | None = None) -> list[str]:
+def _trim(value: str, limit: int) -> str:
+    """Cut at a word boundary so the result, ellipsis included, fits in `limit` characters."""
+    value = _clean(value)
+    if len(value) <= limit:
+        return value
+    cut = value[: limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    return cut + "…"
+
+
+def _full_line(e: dict) -> str:
+    return " | ".join([
+        e["id"],
+        e["kind"],
+        e["file"],
+        _clean(e["description"]),
+        ",".join(e["humor_mechanisms"]),
+        ",".join(e["emotions"]),
+        "; ".join(_clean(u) for u in e["use_when"]),
+    ])
+
+
+def _brief_line(e: dict) -> str:
+    return " | ".join([
+        e["file"].rsplit("/", 1)[-1],
+        _trim(e["description"], BRIEF_DESCRIPTION),
+        ",".join(e["emotions"]),
+        "; ".join(_clean(u) for u in e["use_when"][:BRIEF_USE_WHEN]),
+    ])
+
+
+def catalog_lines(
+    root: Path,
+    humor: str | None = None,
+    emotion: str | None = None,
+    kind: str | None = None,
+    brief: bool = False,
+) -> list[str]:
     entries = sorted(load_index(root)["entries"].values(), key=lambda e: e["id"])
-    return [
-        " | ".join([
-            e["id"],
-            e["kind"],
-            e["file"],
-            _clean(e["description"]),
-            ",".join(e["humor_mechanisms"]),
-            ",".join(e["emotions"]),
-            "; ".join(_clean(u) for u in e["use_when"]),
-        ])
-        for e in entries
-        if _matches_filters(e, humor, emotion, kind)
-    ]
+    line = _brief_line if brief else _full_line
+    return [line(e) for e in entries if _matches_filters(e, humor, emotion, kind)]

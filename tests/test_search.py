@@ -212,3 +212,30 @@ def test_catalog_filters(lib, add_tagged):
 def test_catalog_empty(lib):
     library.init_library(lib)
     assert search.catalog_lines(lib) == []
+
+
+def test_brief_catalog_lines(lib, add_tagged):
+    entry_id = add_tagged(
+        description="A very long description that keeps going well past the seventy character cut-off point",
+        emotions=["joy", "contentment"],
+        use_when=["one", "two", "three", "four"],
+    )
+
+    [line] = search.catalog_lines(lib, brief=True)
+
+    name, description, emotions, use_when = line.split(" | ")
+    assert name == f"{entry_id}.png"
+    assert description.endswith("…") and len(description) <= search.BRIEF_DESCRIPTION
+    assert not description[:-1].endswith(" ")
+    assert emotions == "joy,contentment"
+    assert use_when == "one; two; three"
+
+
+def test_brief_entry_keeps_only_what_picking_needs(lib, add_tagged):
+    entry_id = add_tagged(avoid_when=["real bad news"], text="Hi")
+    [result] = search.search(lib, "")
+
+    brief = search.brief_entry(result)
+
+    assert set(brief) == {"id", "path", "description", "emotions", "use_when", "avoid_when", "text", "score"}
+    assert brief["id"] == entry_id and brief["avoid_when"] == ["real bad news"]

@@ -7,7 +7,17 @@ import json
 import sys
 from pathlib import Path
 
-from .library import STATUSES, LibraryError, get_entry, init_library, library_root, list_entries, load_index, with_path
+from .library import (
+    STATUSES,
+    LibraryError,
+    catalog_max,
+    get_entry,
+    init_library,
+    library_root,
+    list_entries,
+    load_index,
+    with_path,
+)
 
 
 def configure_utf8() -> None:
@@ -96,11 +106,13 @@ def _check_filter_terms(args: argparse.Namespace) -> None:
 
 
 def cmd_search(root: Path, args: argparse.Namespace) -> int:
-    from .search import search_page
+    from .search import brief_entry, search_page
 
     _check_filter_terms(args)
     page = search_page(root, args.query, humor=args.humor, emotion=args.emotion, kind=args.kind,
                        limit=args.limit, exclude=args.exclude)
+    if args.format == "brief":
+        page["results"] = [brief_entry(r) for r in page["results"]]
     emit({"query": args.query, **page})
     return 0
 
@@ -114,8 +126,19 @@ def cmd_catalog(root: Path, args: argparse.Namespace) -> int:
     from .search import catalog_lines
 
     _check_filter_terms(args)
-    lines = catalog_lines(root, humor=args.humor, emotion=args.emotion, kind=args.kind)
-    print("\n".join([f"# library: {root}", *lines]) if lines else "(no tagged entries)")
+    lines = catalog_lines(root, humor=args.humor, emotion=args.emotion, kind=args.kind, brief=args.brief)
+    if not lines:
+        print("(no tagged entries)")
+        return 0
+    if not args.brief:
+        print("\n".join([f"# library: {root}", *lines]))
+        return 0
+    limit = args.max or catalog_max()
+    if len(lines) > limit:
+        print(f"# too many entries for a brief catalog: {len(lines)} match, limit {limit}. "
+              "Use `search` instead, or narrow this with --emotion, --humor or --kind.")
+        return 0
+    print("\n".join([f"# library: {root} | {len(lines)} entries | file | description | emotions | use_when", *lines]))
     return 0
 
 
@@ -163,13 +186,18 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("search", cmd_search, "find reactions for a moment")
     p.add_argument("query")
     add_filters(p)
-    p.add_argument("--limit", type=_positive_int, default=5)
+    p.add_argument("--limit", type=_positive_int, default=15)
     p.add_argument("--exclude", type=_id_list, action="extend", default=[],
                    help="comma-separated ids to leave out, e.g. ones already sent")
+    p.add_argument("--format", choices=("brief", "full"), default="brief",
+                   help="brief keeps only what choosing needs; full returns every stored field")
     p = add("get", cmd_get, "show one entry")
     p.add_argument("id")
     p = add("catalog", cmd_catalog, "one line per tagged entry")
     add_filters(p)
+    p.add_argument("--brief", action="store_true", help="short lines for choosing a reaction from the whole library")
+    p.add_argument("--max", type=_positive_int,
+                   help="largest library --brief will print (default: $REACTION_CATALOG_MAX or 300)")
     add("doctor", cmd_doctor, "check the environment and library")
     return parser
 

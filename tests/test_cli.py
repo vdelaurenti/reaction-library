@@ -119,6 +119,53 @@ def test_search_and_catalog(run, lib, make_png, tmp_path, payload):
     assert out.strip() == "(no tagged entries)"
 
 
+def _tag_pngs(run, make_png, tmp_path, payload, count, **fields):
+    payload_file = tmp_path / "p.json"
+    payload_file.write_text(json.dumps({**payload, **fields}), encoding="utf-8")
+    ids = []
+    for _ in range(count):
+        entry_id = _ingest_one(run, make_png())
+        run("tag", entry_id, payload_file)
+        ids.append(entry_id)
+    return ids
+
+
+def test_search_output_is_brief_unless_full(run, lib, make_png, tmp_path, payload):
+    [entry_id] = _tag_pngs(run, make_png, tmp_path, payload, 1)
+
+    code, out, _ = run("search", "deploy")
+    [result] = _json(out)["results"]
+    assert "sha256" not in result and result["id"] == entry_id and "avoid_when" in result
+
+    code, out, _ = run("search", "deploy", "--format", "full")
+    assert "sha256" in _json(out)["results"][0]
+
+
+def test_search_default_limit_is_fifteen(run, lib, make_png, tmp_path, payload):
+    _tag_pngs(run, make_png, tmp_path, payload, 16)
+    code, out, _ = run("search", "deploy")
+    assert len(_json(out)["results"]) == 15 and _json(out)["total_matches"] == 16
+
+
+def test_brief_catalog_header_and_size_limit(run, lib, make_png, tmp_path, payload, monkeypatch):
+    _tag_pngs(run, make_png, tmp_path, payload, 3)
+
+    code, out, _ = run("catalog", "--brief")
+    lines = out.splitlines()
+    assert code == 0 and lines[0] == f"# library: {lib} | 3 entries | file | description | emotions | use_when"
+    assert len(lines) == 4
+
+    code, out, _ = run("catalog", "--brief", "--max", "2")
+    assert code == 0 and out.startswith("# too many entries for a brief catalog: 3 match, limit 2.")
+    assert "search" in out and "--emotion" in out
+
+    monkeypatch.setenv("REACTION_CATALOG_MAX", "2")
+    code, out, _ = run("catalog", "--brief")
+    assert out.startswith("# too many entries")
+    code, out, _ = run("catalog", "--brief", "--kind", "animated")
+    assert out.strip() == "(no tagged entries)"
+
+
 def test_search_unknown_filter_term_lists_allowed(run, lib):
     run("init")
     code, _, err = run("search", "x", "--humor", "puns")

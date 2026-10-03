@@ -64,17 +64,21 @@ Example:
 
 ## Finding a reaction
 
-1. Run `search "<the moment in a few words>"`. Add `--emotion <term>`, `--humor <term>`, or `--kind animated|static` when the user's intent is clear.
-2. Search matches word forms ("dancing" finds "dance") and expands common words with `<skill-dir>/synonyms.json`, which also merges known phrases ("burned out", "long day") into one word. If a two-word phrase keeps matching the wrong entries, add it to `phrases` there. Words that are rare in the library count for more. The output's `total_matches` says how many entries matched beyond the ones shown. If results are thin, try two or three phrasings: the situation, the feeling, words likely to be in a caption.
-3. For a mood rather than a moment ("I'm chilling, send me something"), filter by emotion with an empty or short query: `search "" --emotion joy --kind animated`.
-4. When the user asks for "another", rerun the same search with `--exclude <id>,<id>` listing everything already sent in this conversation.
-5. For a small library (roughly under 75 tagged entries) you can run `catalog` instead and choose from the whole list. It accepts the same `--emotion`, `--humor` and `--kind` filters. Its first line gives the library folder; join it with each line's file (`media/<id>.<ext>`) to get the path.
-6. Read each candidate's `use_when` and `avoid_when`, then pick the best one. If nothing really fits, say so; don't force a weak match.
-7. Return the result:
+Start with the brief catalog; fall back to search when the library is too big for it.
+
+1. Run `catalog --brief` once per conversation. Each line is `file | description | emotions | use_when`, and the header gives the library folder, so a path is `<library>/media/<file>` and the id is the file name without its extension. Choose by meaning; you don't need matching words. Keep the list in mind for follow-ups ("another", "something more upbeat", "three Will Ferrell ones") instead of running more commands.
+2. If it prints `too many entries` instead, the library is past the brief-catalog limit (300 by default, or `REACTION_CATALOG_MAX`). Either narrow it with `--emotion`, `--humor` or `--kind` when the request clearly fits one, or use search:
+   - `search "<the moment in a few words>"` returns the top 15 in a compact format, plus `total_matches`. It matches word forms ("dancing" finds "dance"), expands common words and merges known phrases ("burned out") using `<skill-dir>/synonyms.json`, and weights rare words higher. If a two-word phrase keeps matching the wrong entries, add it to `phrases` there. If results are thin, try two or three phrasings: the situation, the feeling, words likely to be in a caption.
+   - For a mood rather than a moment ("I'm chilling, send me something"), search with an empty query and an emotion filter: `search "" --emotion contentment --kind animated`.
+   - For "another", rerun the search with `--exclude <id>,<id>` listing everything already sent in this conversation.
+   - `--format full` returns every stored field, which is rarely needed.
+3. Before sending your pick, run `get <id>` and check its `avoid_when`; the brief catalog leaves that field out. If it warns against this moment, pick again. Search results already include `avoid_when`.
+4. If nothing really fits, say so; don't force a weak match.
+5. Return the result:
    - In chat: give the `path` and a one-line reason it fits.
    - For another tool or channel: hand over the absolute `path`, plus the `text` if useful.
 
-`get <id>` shows a single entry.
+`catalog` without `--brief` prints every entry with kind, file, humor and `use_when` in full, for maintenance rather than picking.
 
 ## Maintenance
 

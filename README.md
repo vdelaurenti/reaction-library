@@ -78,12 +78,16 @@ uv run skills/reaction-library/scripts/reaction_library.py <command>
 | `review <ids>` | Mark tags as approved |
 | `retag <ids> \| --all \| --status S` | Clear tags so they get redone |
 | `rebuild [--prune]` | Reconcile the index with `media/` |
-| `search "<moment>" [--emotion T] [--humor T] [--kind K] [--limit N]` | Find candidates |
+| `search "<moment>" [--emotion T] [--humor T] [--kind K] [--limit N] [--exclude IDS] [--format brief\|full]` | Find candidates |
 | `get <id>` | Show one entry |
-| `catalog` | One line per tagged entry |
+| `catalog [--brief] [--max N] [--emotion T] [--humor T] [--kind K]` | One line per tagged entry |
 | `doctor` | Check your setup |
 
-The humor and emotion terms are in [`skills/reaction-library/vocabulary.json`](skills/reaction-library/vocabulary.json).
+The humor and emotion terms are in [`skills/reaction-library/vocabulary.json`](skills/reaction-library/vocabulary.json). Search synonyms and phrases are in [`skills/reaction-library/synonyms.json`](skills/reaction-library/synonyms.json); add your own freely.
+
+### How retrieval works
+
+For libraries up to 300 tagged entries, the assistant reads `catalog --brief` (about 45 tokens per entry) once per conversation and picks by meaning, which handles moods and vague requests better than keyword search. Past that size the brief catalog declines and the assistant uses `search` instead. To change the cut-off, set `REACTION_CATALOG_MAX`, for example `export REACTION_CATALOG_MAX=500`.
 
 ## Development
 

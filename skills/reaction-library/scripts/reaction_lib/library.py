@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ENV_VAR = "REACTION_LIBRARY"
+CATALOG_MAX_ENV = "REACTION_CATALOG_MAX"
+DEFAULT_CATALOG_MAX = 300
 INDEX_VERSION = 1
 STATUSES = ("untagged", "tagged", "reviewed")
 TAG_FIELDS = ("description", "humor_mechanisms", "emotions", "use_when", "avoid_when", "tags", "text")
@@ -23,6 +25,15 @@ def library_root() -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return Path.home() / ".reaction-library"
+
+
+def catalog_max() -> int:
+    """Largest library a brief catalog will print; past it, search is the better first step."""
+    value = os.environ.get(CATALOG_MAX_ENV, "")
+    try:
+        return max(1, int(value)) if value else DEFAULT_CATALOG_MAX
+    except ValueError:
+        raise LibraryError(f"{CATALOG_MAX_ENV} must be a whole number, not '{value}'.") from None
 
 
 def init_library(root: Path) -> Path:
