@@ -1,8 +1,8 @@
 {
   "name": "reaction-library",
-  "version": "0.1.0",
   "description": "Tag and retrieve a personal library of reaction GIFs and memes.",
   "author": {"name": "Vincent Delaurenti"},
+  "homepage": "https://github.com/vdelaurenti/reaction-library#readme",
   "repository": "https://github.com/vdelaurenti/reaction-library",
   "license": "MIT"
 }
