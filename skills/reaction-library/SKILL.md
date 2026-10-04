@@ -15,6 +15,10 @@ Run every command through `uv`, using this skill's own folder (the folder contai
 uv run "<skill-dir>/scripts/reaction_library.py" <command> [args]
 ```
 
+- If `uv` itself is not found, stop and tell the user to install it, then try again. Don't fall back to plain `python`: the dependencies won't be there. Install commands:
+  - macOS: `brew install uv`
+  - Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - Windows: `winget install --id=astral-sh.uv -e`
 - The library lives at `~/.reaction-library/`, or wherever the `REACTION_LIBRARY` environment variable points.
 - Commands print JSON, except `catalog` and `doctor`, which print text.
 - Never edit `index.json` by hand. Every change goes through a command.

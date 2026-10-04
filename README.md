@@ -68,6 +68,8 @@ Your assistant runs these for you. You can also run them yourself:
 uv run skills/reaction-library/scripts/reaction_library.py <command>
 ```
 
+On macOS and Linux the script is executable too: `skills/reaction-library/scripts/reaction_library.py <command>`.
+
 | Command | What it does |
 |---|---|
 | `init` | Create an empty library |
