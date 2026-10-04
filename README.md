@@ -43,15 +43,23 @@ Each GIF gets a short comedic analysis: what happens, why it's funny, what sendi
 | Linux | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Windows | `winget install --id=astral-sh.uv -e` |
 
-**2. Install the skill** in an agent that can run local commands, such as [Claude Code](https://claude.com/claude-code):
+**2. Install the skill.** In [Claude Code](https://claude.com/claude-code):
 
 ```
 /plugin marketplace add vdelaurenti/reaction-library
 /plugin install reaction-library@reaction-library
 ```
 
+**Other agents** (Codex, Kiro, Cursor, Gemini CLI, and [70+ more](https://github.com/vercel-labs/skills)): install with the open [skills CLI](https://github.com/vercel-labs/skills), which puts the skill in the right folder for each agent you pick:
+
+```
+npx skills add vdelaurenti/reaction-library
+```
+
+Any agent works as long as it can run shell commands, since the skill runs its own CLI through `uv`.
+
 <details>
-<summary><b>Manual install</b> (or for other agents that read <code>SKILL.md</code> folders)</summary>
+<summary><b>Manual install</b></summary>
 
 <br>
 
@@ -62,10 +70,16 @@ git clone https://github.com/vdelaurenti/reaction-library
 cd reaction-library
 ```
 
-| OS | Command (Claude Code's skills directory) |
+| Agent | Skills directory |
 |---|---|
-| macOS / Linux | `cp -R skills/reaction-library ~/.claude/skills/` |
-| Windows (PowerShell) | `Copy-Item -Recurse skills\reaction-library $HOME\.claude\skills\` |
+| Claude Code | `~/.claude/skills/` |
+| Codex | `~/.agents/skills/` |
+| Kiro | `~/.kiro/skills/` |
+
+- macOS / Linux: `cp -R skills/reaction-library ~/.claude/skills/`
+- Windows (PowerShell): `Copy-Item -Recurse skills\reaction-library $HOME\.claude\skills\`
+
+Swap in the directory for your agent.
 
 </details>
 

@@ -83,6 +83,7 @@ def test_readme_manual_install_clones_first():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "git clone https://github.com/vdelaurenti/reaction-library" in text
     assert "## Your first five minutes" in text
+    assert "npx skills add vdelaurenti/reaction-library" in text
 
 
 def test_skill_explains_missing_uv():
