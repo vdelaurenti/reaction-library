@@ -1,5 +1,11 @@
 # reaction-library
 
+<p align="center">
+  <a href="https://giphy.com/gifs/keanu-reeves-matrix-the-3o7btNhMBytxAM6YBa">
+    <img src="https://media.giphy.com/media/3o7btNhMBytxAM6YBa/giphy.gif" alt="Neo in The Matrix: &quot;I know kung fu&quot;" width="400">
+  </a>
+</p>
+
 An [Agent Skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills) that keeps a personal library of reaction GIFs and memes. Each one gets a short comedic analysis (why it's funny, what it says, when to use it, and when not to), so your AI assistant can find the right reaction for the moment.
 
 It does two things:
