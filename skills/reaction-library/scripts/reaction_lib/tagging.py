@@ -9,7 +9,16 @@ from typing import TextIO
 
 from jsonschema import Draft202012Validator
 
-from .library import SKILL_DIR, TAG_FIELDS, LibraryError, get_entry, load_index, remove_frames, save_index
+from .library import (
+    SKILL_DIR,
+    TAG_FIELDS,
+    LibraryError,
+    get_entry,
+    index_lock,
+    load_index,
+    remove_frames,
+    save_index,
+)
 
 VOCAB_FIELDS = ("humor_mechanisms", "emotions")
 
@@ -70,42 +79,49 @@ def _clear_tags(entry: dict) -> None:
     entry["status"] = "untagged"
 
 
-def tag(root: Path, entry_id: str, payload: object) -> dict:
-    index = load_index(root)
-    entry = get_entry(index, entry_id)
-    errors = validate_payload(payload)
-    if errors:
-        raise LibraryError("Invalid tag payload:\n" + "\n".join(f"- {e}" for e in errors))
+def _apply_tag(entry: dict, payload: dict) -> None:
     _clear_tags(entry)
     entry.update({"avoid_when": [], "tags": [], "text": None})
     entry.update({k: v for k, v in payload.items() if k in TAG_FIELDS})
     entry["status"] = "tagged"
-    save_index(root, index)
+
+
+def tag(root: Path, entry_id: str, payload: object) -> dict:
+    errors = validate_payload(payload)
+    with index_lock(root):
+        index = load_index(root)
+        entry = get_entry(index, entry_id)
+        if errors:
+            raise LibraryError("Invalid tag payload:\n" + "\n".join(f"- {e}" for e in errors))
+        _apply_tag(entry, payload)
+        save_index(root, index)
     remove_frames(root, entry_id)
     return entry
 
 
 def review(root: Path, ids: list[str]) -> list[str]:
-    index = load_index(root)
-    entries = [get_entry(index, entry_id) for entry_id in ids]
-    untagged = [e["id"] for e in entries if e["status"] == "untagged"]
-    if untagged:
-        raise LibraryError(f"Cannot review untagged entries: {', '.join(untagged)}")
-    for entry in entries:
-        entry["status"] = "reviewed"
-    save_index(root, index)
+    with index_lock(root):
+        index = load_index(root)
+        entries = [get_entry(index, entry_id) for entry_id in ids]
+        untagged = [e["id"] for e in entries if e["status"] == "untagged"]
+        if untagged:
+            raise LibraryError(f"Cannot review untagged entries: {', '.join(untagged)}")
+        for entry in entries:
+            entry["status"] = "reviewed"
+        save_index(root, index)
     return ids
 
 
 def retag(root: Path, ids: list[str] | None = None, all_entries: bool = False, status: str | None = None) -> list[str]:
-    index = load_index(root)
-    if all_entries:
-        targets = list(index["entries"].values())
-    elif status is not None:
-        targets = [e for e in index["entries"].values() if e["status"] == status]
-    else:
-        targets = [get_entry(index, entry_id) for entry_id in ids or []]
-    for entry in targets:
-        _clear_tags(entry)
-    save_index(root, index)
+    with index_lock(root):
+        index = load_index(root)
+        if all_entries:
+            targets = list(index["entries"].values())
+        elif status is not None:
+            targets = [e for e in index["entries"].values() if e["status"] == status]
+        else:
+            targets = [get_entry(index, entry_id) for entry_id in ids or []]
+        for entry in targets:
+            _clear_tags(entry)
+        save_index(root, index)
     return [e["id"] for e in targets]

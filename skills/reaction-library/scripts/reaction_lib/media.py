@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from .library import LibraryError, entry_path, init_library, load_index, now_iso, save_index
+from .library import LibraryError, entry_path, index_lock, init_library, load_index, now_iso, save_index
 
 SUPPORTED_EXTS = frozenset({".gif", ".png", ".jpg", ".jpeg", ".webp"})
 ID_LEN = 10
@@ -67,6 +67,11 @@ def _candidates(paths: list[Path]) -> Iterator[Path]:
 
 def ingest(root: Path, paths: list[Path], move: bool = False) -> dict:
     init_library(root)
+    with index_lock(root):
+        return _ingest(root, paths, move)
+
+
+def _ingest(root: Path, paths: list[Path], move: bool) -> dict:
     index = load_index(root)
     entries = index["entries"]
     by_sha = {e["sha256"]: entry_id for entry_id, e in entries.items()}
@@ -137,6 +142,13 @@ def extract_frames(root: Path, entry: dict) -> dict:
 
 def rebuild(root: Path, prune: bool = False, dry_run: bool = False) -> dict:
     """Reconcile index.json with media/. Existing tags are never touched."""
+    if dry_run:
+        return _rebuild(root, prune, dry_run)
+    with index_lock(root):
+        return _rebuild(root, prune, dry_run)
+
+
+def _rebuild(root: Path, prune: bool, dry_run: bool) -> dict:
     index = load_index(root)
     entries = index["entries"]
     known = {e["file"] for e in entries.values()}

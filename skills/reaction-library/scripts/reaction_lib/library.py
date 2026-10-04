@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,6 +18,9 @@ INDEX_VERSION = 1
 STATUSES = ("untagged", "tagged", "reviewed")
 TAG_FIELDS = ("description", "humor_mechanisms", "emotions", "use_when", "avoid_when", "tags", "text")
 SKILL_DIR = Path(__file__).resolve().parents[2]
+LOCK_TIMEOUT = 30.0
+LOCK_STALE = 300.0
+LOCK_POLL = 0.1
 
 
 class LibraryError(Exception):
@@ -41,7 +47,9 @@ def init_library(root: Path) -> Path:
     (root / "media").mkdir(parents=True, exist_ok=True)
     (root / ".frames").mkdir(exist_ok=True)
     if not (root / "index.json").exists():
-        save_index(root, {"version": INDEX_VERSION, "entries": {}})
+        with index_lock(root):
+            if not (root / "index.json").exists():
+                save_index(root, {"version": INDEX_VERSION, "entries": {}})
     return root
 
 
@@ -56,6 +64,35 @@ def load_index(root: Path) -> dict:
     if not isinstance(index, dict) or not isinstance(index.get("entries"), dict):
         raise LibraryError("index.json is missing its 'entries' object.")
     return index
+
+
+@contextmanager
+def index_lock(root: Path) -> Iterator[None]:
+    """Hold <library>/index.lock across a read-modify-write of index.json, so concurrent
+    writers (parallel tagging workers) don't drop each other's changes."""
+    lock = root / "index.lock"
+    deadline = time.monotonic() + LOCK_TIMEOUT
+    while True:
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            try:
+                if time.time() - lock.stat().st_mtime > LOCK_STALE:
+                    lock.unlink(missing_ok=True)
+                    continue
+            except FileNotFoundError:
+                continue
+            if time.monotonic() >= deadline:
+                raise LibraryError(f"Timed out waiting for {lock}. Another command is writing the library; "
+                                   "if none is running, delete that file.") from None
+            time.sleep(LOCK_POLL)
+    try:
+        os.write(fd, f"{os.getpid()}\n".encode())
+        os.close(fd)
+        yield
+    finally:
+        lock.unlink(missing_ok=True)
 
 
 def save_index(root: Path, index: dict) -> None:
