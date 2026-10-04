@@ -32,10 +32,11 @@ def test_retired_vocabulary_terms_warn(lib, make_png):
     assert any(line.startswith("[warn] tags use current vocabulary: 1 entries") and entry_id in line for line in lines)
 
 
-def test_missing_library_suggests_init(lib):
+def test_missing_library_is_info_on_a_fresh_install(lib):
     lines, ok = doctor.run_doctor(lib)
-    assert not ok
-    assert any(line.startswith("[FAIL] library exists") and "init" in line for line in lines)
+    assert ok
+    assert not any("[FAIL]" in line for line in lines)
+    assert any(line.startswith("[info] no library yet") and "ingest" in line for line in lines)
 
 
 def test_missing_uv_fails(lib, monkeypatch):

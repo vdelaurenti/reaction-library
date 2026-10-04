@@ -26,22 +26,28 @@ It does two things:
 
 ### Manual install
 
-Copy the skill folder into your Claude Code skills directory:
+Clone the repo, then copy the skill folder into your Claude Code skills directory:
+
+```
+git clone https://github.com/vdelaurenti/reaction-library
+cd reaction-library
+```
 
 - macOS / Linux: `cp -R skills/reaction-library ~/.claude/skills/`
 - Windows (PowerShell): `Copy-Item -Recurse skills\reaction-library $HOME\.claude\skills\`
 
 Other agents that read `SKILL.md` folders can use the same `skills/reaction-library/` folder; copy it into that agent's skills directory.
 
-## Usage
+## Your first five minutes
 
-Just talk to your assistant:
+The library starts empty. Fill it with reactions you already like:
 
-- "Add the GIFs in ~/Downloads/reactions to my reaction library"
-- "Tag my new reactions"
-- "Got a gif for when the build finally passes?"
+1. **Collect.** Save 10–20 GIFs or memes into one folder, for example `~/Downloads/reactions`. Right-click "Save as" in Slack, Giphy, or a browser all work.
+2. **Add.** Ask your assistant: "Add the GIFs in ~/Downloads/reactions to my reaction library." Duplicates and unsupported files are skipped and reported.
+3. **Tag.** Ask: "Tag my new reactions." The assistant looks at each one and records what it says and when to use it, 10 at a time, then shows you the tags to approve or correct. Nothing is searchable until it's tagged.
+4. **Use.** Ask for a moment: "Got a gif for when the build finally passes?" You get back the file path and why it fits.
 
-The library is created the first time you add something.
+Add more any time; only the new ones need tagging.
 
 ## Where your library lives
 

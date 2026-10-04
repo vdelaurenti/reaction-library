@@ -102,6 +102,10 @@ def cmd_clean_frames(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def _untagged_count(root: Path) -> int:
+    return sum(1 for e in load_index(root)["entries"].values() if e["status"] == "untagged")
+
+
 def _check_filter_terms(args: argparse.Namespace) -> None:
     from .tagging import load_vocabulary
 
@@ -119,7 +123,8 @@ def cmd_search(root: Path, args: argparse.Namespace) -> int:
                        limit=args.limit, exclude=args.exclude)
     if args.format == "brief":
         page["results"] = [brief_entry(r) for r in page["results"]]
-    emit({"query": args.query, **page})
+    untagged = _untagged_count(root)
+    emit({"query": args.query, **page, **({"untagged": untagged} if untagged else {})})
     return 0
 
 
@@ -133,8 +138,9 @@ def cmd_catalog(root: Path, args: argparse.Namespace) -> int:
 
     _check_filter_terms(args)
     lines = catalog_lines(root, humor=args.humor, emotion=args.emotion, kind=args.kind, brief=args.brief)
+    untagged = _untagged_count(root)
     if not lines:
-        print("(no tagged entries)")
+        print(f"(no tagged entries; {untagged} untagged waiting to be tagged)" if untagged else "(no tagged entries)")
         return 0
     if not args.brief:
         print("\n".join([f"# library: {root}", *lines]))
@@ -144,7 +150,8 @@ def cmd_catalog(root: Path, args: argparse.Namespace) -> int:
         print(f"# too many entries for a brief catalog: {len(lines)} match, limit {limit}. "
               "Use `search` instead, or narrow this with --emotion, --humor or --kind.")
         return 0
-    print("\n".join([f"# library: {root} | {len(lines)} entries | file | description | emotions | use_when", *lines]))
+    count = f"{len(lines)} entries" + (f", {untagged} untagged" if untagged else "")
+    print("\n".join([f"# library: {root} | {count} | file | description | emotions | use_when", *lines]))
     return 0
 
 

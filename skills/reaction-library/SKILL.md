@@ -24,6 +24,13 @@ uv run "<skill-dir>/scripts/reaction_library.py" <command> [args]
 - Never edit `index.json` by hand. Every change goes through a command.
 - If a command fails unexpectedly, run `doctor` and tell the user what it reports.
 
+## First run
+
+A new user starts with an empty library. These are normal states, not failures; don't run `doctor` for them:
+
+- `No library at ...`: nothing has been added yet. Tell the user the library starts empty and ask for a folder or files of GIFs and memes to add (for example ones saved from Slack, Giphy, or their downloads), then `ingest` them.
+- `(no tagged entries; N untagged waiting to be tagged)` from `catalog`, or an `untagged` count in `search` output: media was added but not tagged yet, so nothing can be found. Offer to tag it instead of saying nothing fits.
+
 ## Adding media
 
 `ingest <files or folders>` copies `.gif .png .jpg .jpeg .webp` files into the library. Folders are scanned recursively. Add `--move` only if the user asks to move the files. The output lists what was `added`, what was a duplicate, and what was skipped and why. Tell the user about any duplicates or skipped files.
@@ -32,7 +39,7 @@ uv run "<skill-dir>/scripts/reaction_library.py" <command> [args]
 
 When the user asks to tag new media (or right after an ingest, if they want):
 
-1. Run `list --status untagged`.
+1. Run `list --status untagged`. Work in batches of 10: each GIF means looking at up to four frames, so a large backlog done in one pass overloads your context. After each batch, check in with the user (step 5) and say how many are left before starting the next.
 2. For each entry, run `frames <id>` and look at **every** frame path it returns. The punchline is often in the last frame.
 3. Write the analysis as JSON (rules below) to `<workdir>/tag.json`, where `workdir` comes from the `frames` output. Use your file-writing tool, not shell echo.
 4. Run `tag <id> <workdir>/tag.json`. If it's rejected, fix exactly the problems listed and run it again. Once it's accepted, the workdir and its frames are deleted.

@@ -51,6 +51,20 @@ def test_entry_script_is_executable_in_git():
     assert out.startswith("100755"), out
 
 
+def test_skill_covers_first_run():
+    text = (ROOT / "skills" / "reaction-library" / "SKILL.md").read_text(encoding="utf-8")
+    assert "## First run" in text
+    assert "No library at" in text
+    assert "untagged waiting to be tagged" in text
+    assert "batches of 10" in text
+
+
+def test_readme_manual_install_clones_first():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "git clone https://github.com/vdelaurenti/reaction-library" in text
+    assert "## Your first five minutes" in text
+
+
 def test_skill_explains_missing_uv():
     text = (ROOT / "skills" / "reaction-library" / "SKILL.md").read_text(encoding="utf-8")
     assert "brew install uv" in text

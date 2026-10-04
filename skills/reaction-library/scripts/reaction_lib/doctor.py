@@ -57,7 +57,8 @@ def run_doctor(root: Path) -> tuple[list[str], bool]:
 
     source = f"from {ENV_VAR}" if os.environ.get(ENV_VAR) else "default"
     lines.append(f"Library: {root} ({source})")
-    if not check(root.is_dir(), "library exists", "run `init`, or just `ingest` some files"):
+    if not root.is_dir():
+        lines.append("[info] no library yet -> it's created the first time you `ingest` some files")
         return lines, ok
     check(_writable(root), "library is writable", "check the folder's permissions")
     try:

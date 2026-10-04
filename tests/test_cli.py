@@ -178,6 +178,32 @@ def test_search_limit_must_be_positive(run, lib):
     assert exc.value.code == 2
 
 
+def test_untagged_entries_are_pointed_out(run, lib, make_png, tmp_path, payload):
+    _ingest_one(run, make_png())
+
+    code, out, _ = run("catalog", "--brief")
+    assert code == 0 and out.strip() == "(no tagged entries; 1 untagged waiting to be tagged)"
+    code, out, _ = run("search", "laptop")
+    assert code == 0 and _json(out)["total_matches"] == 0 and _json(out)["untagged"] == 1
+
+    tagged = _ingest_one(run, make_png())
+    payload_file = tmp_path / "p.json"
+    payload_file.write_text(json.dumps(payload), encoding="utf-8")
+    run("tag", tagged, payload_file)
+    code, out, _ = run("catalog", "--brief")
+    assert out.splitlines()[0].startswith(f"# library: {lib} | 1 entries, 1 untagged |")
+
+
+def test_search_omits_untagged_count_when_all_tagged(run, lib, make_png, tmp_path, payload):
+    entry_id = _ingest_one(run, make_png())
+    payload_file = tmp_path / "p.json"
+    payload_file.write_text(json.dumps(payload), encoding="utf-8")
+    run("tag", entry_id, payload_file)
+
+    code, out, _ = run("search", "laptop")
+    assert "untagged" not in _json(out)
+
+
 def test_catalog_empty_and_unknown_id(run, lib):
     run("init")
     code, out, _ = run("catalog")
