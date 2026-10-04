@@ -70,8 +70,18 @@ def cmd_frames(root: Path, args: argparse.Namespace) -> int:
 def cmd_tag(root: Path, args: argparse.Namespace) -> int:
     from .tagging import read_payload, tag
 
-    emit(with_path(root, tag(root, args.id, read_payload(args.payload))))
+    entry = tag(root, args.id, read_payload(args.payload))
+    emit({"id": entry["id"], "status": entry["status"]})
     return 0
+
+
+def cmd_tag_batch(root: Path, args: argparse.Namespace) -> int:
+    from .tagging import read_jsonl, tag_batch
+
+    rows = read_jsonl(args.payload)
+    result = tag_batch(root, [row for _, row in rows], [number for number, _ in rows])
+    emit(result)
+    return 1 if result["rejected"] else 0
 
 
 def cmd_review(root: Path, args: argparse.Namespace) -> int:
@@ -182,6 +192,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p = add("tag", cmd_tag, "save a tag payload (JSON file path, or - for stdin)")
     p.add_argument("id")
+    p.add_argument("payload")
+    p = add("tag-batch", cmd_tag_batch,
+            "save many tags from JSON Lines, one {\"id\": ..., <tag fields>} per line (file path, or - for stdin)")
     p.add_argument("payload")
     p = add("review", cmd_review, "mark tagged entries as reviewed")
     p.add_argument("ids", nargs="+")

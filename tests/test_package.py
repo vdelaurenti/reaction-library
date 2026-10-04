@@ -8,7 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "skills" / "reaction-library" / "scripts" / "reaction_library.py"
-COMMANDS = ["init", "ingest", "list", "frames", "tag", "review", "retag", "rebuild", "clean-frames", "search", "get", "catalog", "doctor"]
+COMMANDS = ["init", "ingest", "list", "frames", "tag", "tag-batch", "review", "retag", "rebuild", "clean-frames", "search", "get", "catalog", "doctor"]
 
 
 def test_skill_frontmatter():

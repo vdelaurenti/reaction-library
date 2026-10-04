@@ -50,7 +50,7 @@ def test_ingest_list_frames_tag_get(run, lib, make_gif, tmp_path, payload):
     payload_file = Path(frames["workdir"]) / "tag.json"
     payload_file.write_text(json.dumps(payload), encoding="utf-8")
     code, out, _ = run("tag", entry_id, payload_file)
-    assert code == 0 and _json(out)["status"] == "tagged"
+    assert code == 0 and _json(out) == {"id": entry_id, "status": "tagged"}
 
     code, out, _ = run("get", entry_id)
     got = _json(out)

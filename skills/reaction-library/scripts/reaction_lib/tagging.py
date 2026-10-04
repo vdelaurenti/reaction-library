@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TextIO
+from typing import NamedTuple, TextIO
 
 from jsonschema import Draft202012Validator
 
@@ -59,7 +60,7 @@ def _decode(data: bytes) -> str:
         raise LibraryError(f"Payload file is not UTF-8 text ({e}). Save it as UTF-8.") from e
 
 
-def read_payload(source: str, stdin: TextIO | None = None) -> object:
+def _read_text(source: str, stdin: TextIO | None = None) -> str:
     try:
         if source == "-":
             raw = (stdin or sys.stdin).read()
@@ -67,10 +68,34 @@ def read_payload(source: str, stdin: TextIO | None = None) -> object:
             raw = _decode(Path(source).read_bytes())
     except OSError as e:
         raise LibraryError(f"Cannot read payload: {e}") from e
+    return raw.lstrip("\ufeff")
+
+
+def read_payload(source: str, stdin: TextIO | None = None) -> object:
+    raw = _read_text(source, stdin)
     try:
-        return json.loads(raw.lstrip("\ufeff"))
+        return json.loads(raw)
     except json.JSONDecodeError as e:
         raise LibraryError(f"Payload is not valid JSON: {e}") from e
+
+
+class BadLine(NamedTuple):
+    """A JSON Lines row that didn't parse; tag_batch rejects it with this error."""
+
+    error: str
+
+
+def read_jsonl(source: str, stdin: TextIO | None = None) -> list[tuple[int, object]]:
+    """(line number, parsed object or BadLine) for each non-blank line."""
+    rows: list[tuple[int, object]] = []
+    for number, line in enumerate(_read_text(source, stdin).splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            rows.append((number, json.loads(line)))
+        except json.JSONDecodeError as e:
+            rows.append((number, BadLine(f"not valid JSON: {e}")))
+    return rows
 
 
 def _clear_tags(entry: dict) -> None:
@@ -97,6 +122,45 @@ def tag(root: Path, entry_id: str, payload: object) -> dict:
         save_index(root, index)
     remove_frames(root, entry_id)
     return entry
+
+
+def tag_batch(root: Path, rows: Sequence[object], lines: Sequence[int] | None = None) -> dict:
+    """Tag many entries with one index write. Each row is {"id": ..., <tag fields>}.
+    Valid rows are saved; the rest are reported per line and left untouched."""
+    lines = lines or range(1, len(rows) + 1)
+    checked = []
+    for number, row in zip(lines, rows):
+        if isinstance(row, BadLine):
+            checked.append((number, None, None, [row.error]))
+        elif not isinstance(row, dict) or not isinstance(row.get("id"), str):
+            checked.append((number, None, None, ["missing 'id' (a string)"]))
+        else:
+            payload = {k: v for k, v in row.items() if k != "id"}
+            checked.append((number, row["id"], payload, validate_payload(payload)))
+
+    tagged: list[str] = []
+    rejected: list[dict] = []
+    with index_lock(root):
+        index = load_index(root)
+        seen: set[str] = set()
+        for number, entry_id, payload, errors in checked:
+            if entry_id is not None and not errors:
+                if entry_id in seen:
+                    errors = ["duplicate id in this batch"]
+                elif entry_id not in index["entries"]:
+                    errors = [f"Unknown id: {entry_id}"]
+            if entry_id is not None:
+                seen.add(entry_id)
+            if errors:
+                rejected.append({"line": number, "id": entry_id, "errors": errors})
+                continue
+            _apply_tag(index["entries"][entry_id], payload)
+            tagged.append(entry_id)
+        if tagged:
+            save_index(root, index)
+    for entry_id in tagged:
+        remove_frames(root, entry_id)
+    return {"tagged": tagged, "rejected": rejected}
 
 
 def review(root: Path, ids: list[str]) -> list[str]:

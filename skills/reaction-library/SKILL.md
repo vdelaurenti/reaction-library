@@ -42,7 +42,7 @@ When the user asks to tag new media (or right after an ingest, if they want):
 1. Run `list --status untagged`. Work in batches of 10: each GIF means looking at up to four frames, so a large backlog done in one pass overloads your context. After each batch, check in with the user (step 5) and say how many are left before starting the next.
 2. For each entry, run `frames <id>` and look at **every** frame path it returns. The punchline is often in the last frame.
 3. Write the analysis as JSON (rules below) to `<workdir>/tag.json`, where `workdir` comes from the `frames` output. Use your file-writing tool, not shell echo.
-4. Run `tag <id> <workdir>/tag.json`. If it's rejected, fix exactly the problems listed and run it again. Once it's accepted, the workdir and its frames are deleted.
+4. Run `tag <id> <workdir>/tag.json`. If it's rejected, fix exactly the problems listed and run it again. Once it's accepted, the workdir and its frames are deleted. To save a whole batch at once, write one `{"id": ..., <tag fields>}` object per line to a `.jsonl` file and run `tag-batch <file>`; it saves the valid lines and lists rejected ones by line number.
 5. After the batch, show the user a short table (id, description, use_when) and ask whether the tags look right. If they approve, run `review <id> [<id> ...]`. If they correct one, write a new payload and `tag` it again; run `frames <id>` first if you need a workdir or another look.
 
 ### Writing the analysis
