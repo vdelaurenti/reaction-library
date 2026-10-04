@@ -215,3 +215,14 @@ def test_entry_script_prints_utf8(lib, make_png, tmp_path, payload):
 
     assert got.returncode == 0, got.stderr
     assert json.loads(got.stdout.decode("utf-8"))["text"] == "café 🔥"
+
+
+def test_clean_frames(run, lib, make_gif):
+    entry_id = _ingest_one(run, make_gif())
+    run("frames", entry_id)
+
+    code, out, _ = run("clean-frames")
+    assert code == 0 and _json(out)["removed"] == []
+
+    code, out, _ = run("clean-frames", "--all")
+    assert code == 0 and _json(out)["removed"] == [entry_id]

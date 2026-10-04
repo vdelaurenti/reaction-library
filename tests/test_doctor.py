@@ -73,3 +73,16 @@ def test_missing_media_folder_is_reported(lib, make_png):
 
     assert not ok
     assert any(line.startswith("[FAIL] media/ exists") and "rebuild" in line for line in lines)
+
+
+def test_stale_frames_are_a_warning(lib, make_png):
+    entry_id = media.ingest(lib, [make_png()])["added"][0]["id"]
+    index = library.load_index(lib)
+    index["entries"][entry_id]["status"] = "tagged"
+    library.save_index(lib, index)
+    (lib / ".frames" / entry_id).mkdir()
+
+    lines, ok = doctor.run_doctor(lib)
+
+    assert ok
+    assert any(line.startswith("[warn] frames scratch: 1 stale") and "clean-frames" in line for line in lines)

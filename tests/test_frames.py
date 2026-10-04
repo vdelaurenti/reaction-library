@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from reaction_lib import library, media
+from reaction_lib import library, media, tagging
 from reaction_lib.library import LibraryError
 
 
@@ -56,3 +56,65 @@ def test_frames_missing_media_points_to_rebuild(lib, make_png):
 
     with pytest.raises(LibraryError, match="rebuild"):
         media.extract_frames(lib, entry)
+
+
+def _set_status(lib, entry_id, status):
+    index = library.load_index(lib)
+    index["entries"][entry_id]["status"] = status
+    library.save_index(lib, index)
+
+
+def test_successful_tag_removes_frames_workdir(lib, make_gif, payload):
+    entry = _ingest_one(lib, make_gif())
+    workdir = Path(media.extract_frames(lib, entry)["workdir"])
+    (workdir / "tag.json").write_text("{}", encoding="utf-8")
+
+    tagging.tag(lib, entry["id"], payload)
+
+    assert not workdir.exists()
+
+
+def test_rejected_tag_keeps_frames_workdir(lib, make_gif, payload):
+    entry = _ingest_one(lib, make_gif())
+    workdir = Path(media.extract_frames(lib, entry)["workdir"])
+    del payload["description"]
+
+    with pytest.raises(LibraryError):
+        tagging.tag(lib, entry["id"], payload)
+
+    assert workdir.is_dir()
+
+
+def test_clean_frames_keeps_untagged_and_removes_the_rest(lib, make_gif):
+    untagged, tagged, reviewed = (_ingest_one(lib, make_gif()) for _ in range(3))
+    for entry in (untagged, tagged, reviewed):
+        media.extract_frames(lib, entry)
+    _set_status(lib, tagged["id"], "tagged")
+    _set_status(lib, reviewed["id"], "reviewed")
+    orphan = lib / ".frames" / "gone000000"
+    orphan.mkdir()
+    (orphan / "frame-0.png").write_bytes(b"x" * 10)
+
+    result = library.clean_frames(lib)
+
+    assert result["removed"] == sorted([tagged["id"], reviewed["id"], "gone000000"])
+    assert result["freed_bytes"] > 10
+    assert (lib / ".frames" / untagged["id"]).is_dir()
+    assert not orphan.exists()
+
+
+def test_clean_frames_all_removes_untagged_too(lib, make_gif):
+    entry = _ingest_one(lib, make_gif())
+    media.extract_frames(lib, entry)
+
+    result = library.clean_frames(lib, all_folders=True)
+
+    assert result["removed"] == [entry["id"]]
+    assert list((lib / ".frames").iterdir()) == []
+
+
+def test_clean_frames_without_frames_folder(lib, make_gif):
+    _ingest_one(lib, make_gif())
+    (lib / ".frames").rmdir()
+
+    assert library.clean_frames(lib) == {"removed": [], "freed_bytes": 0}

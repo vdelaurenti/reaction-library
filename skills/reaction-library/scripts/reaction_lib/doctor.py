@@ -12,7 +12,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from .library import ENV_VAR, SKILL_DIR, STATUSES, LibraryError, load_index
+from .library import ENV_VAR, SKILL_DIR, STATUSES, LibraryError, load_index, stale_frames, tree_size
 
 
 def _writable(root: Path) -> bool:
@@ -82,6 +82,11 @@ def run_doctor(root: Path) -> tuple[list[str], bool]:
         shown = ", ".join(stale[:10]) + (", ..." if len(stale) > 10 else "")
         check(not stale, f"tags use current vocabulary: {len(stale)} entries use retired terms" + (f" ({shown})" if stale else ""),
               "re-tag them; `retag <id ...>` clears their tags", fatal=False)
+
+    stale = stale_frames(root, index)
+    stale_mb = sum(tree_size(root / ".frames" / s) for s in stale) / 1e6
+    check(not stale, f"frames scratch: {len(stale)} stale folders ({stale_mb:.1f} MB)",
+          "run `clean-frames`; `frames` recreates them when needed", fatal=False)
 
     if deps_ok:
         from .media import rebuild

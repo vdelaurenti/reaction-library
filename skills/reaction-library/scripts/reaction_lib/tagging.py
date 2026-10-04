@@ -9,7 +9,7 @@ from typing import TextIO
 
 from jsonschema import Draft202012Validator
 
-from .library import SKILL_DIR, TAG_FIELDS, LibraryError, get_entry, load_index, save_index
+from .library import SKILL_DIR, TAG_FIELDS, LibraryError, get_entry, load_index, remove_frames, save_index
 
 VOCAB_FIELDS = ("humor_mechanisms", "emotions")
 
@@ -81,6 +81,7 @@ def tag(root: Path, entry_id: str, payload: object) -> dict:
     entry.update({k: v for k, v in payload.items() if k in TAG_FIELDS})
     entry["status"] = "tagged"
     save_index(root, index)
+    remove_frames(root, entry_id)
     return entry
 
 

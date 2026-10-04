@@ -11,6 +11,7 @@ from .library import (
     STATUSES,
     LibraryError,
     catalog_max,
+    clean_frames,
     get_entry,
     init_library,
     library_root,
@@ -96,6 +97,11 @@ def cmd_rebuild(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_clean_frames(root: Path, args: argparse.Namespace) -> int:
+    emit(clean_frames(root, all_folders=args.all))
+    return 0
+
+
 def _check_filter_terms(args: argparse.Namespace) -> None:
     from .tagging import load_vocabulary
 
@@ -178,6 +184,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status", choices=STATUSES)
     p = add("rebuild", cmd_rebuild, "reconcile the index with media/")
     p.add_argument("--prune", action="store_true", help="drop entries whose files are missing")
+    p = add("clean-frames", cmd_clean_frames, "delete frames workdirs no longer needed for tagging")
+    p.add_argument("--all", action="store_true", help="also delete workdirs of untagged entries")
     def add_filters(p: argparse.ArgumentParser) -> None:
         p.add_argument("--humor")
         p.add_argument("--emotion")

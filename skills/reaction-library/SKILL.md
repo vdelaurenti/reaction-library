@@ -31,8 +31,8 @@ When the user asks to tag new media (or right after an ingest, if they want):
 1. Run `list --status untagged`.
 2. For each entry, run `frames <id>` and look at **every** frame path it returns. The punchline is often in the last frame.
 3. Write the analysis as JSON (rules below) to `<workdir>/tag.json`, where `workdir` comes from the `frames` output. Use your file-writing tool, not shell echo.
-4. Run `tag <id> <workdir>/tag.json`. If it's rejected, fix exactly the problems listed and run it again.
-5. After the batch, show the user a short table (id, description, use_when) and ask whether the tags look right. If they approve, run `review <id> [<id> ...]`. If they correct one, write a new payload and `tag` it again.
+4. Run `tag <id> <workdir>/tag.json`. If it's rejected, fix exactly the problems listed and run it again. Once it's accepted, the workdir and its frames are deleted.
+5. After the batch, show the user a short table (id, description, use_when) and ask whether the tags look right. If they approve, run `review <id> [<id> ...]`. If they correct one, write a new payload and `tag` it again; run `frames <id>` first if you need a workdir or another look.
 
 ### Writing the analysis
 
@@ -84,5 +84,6 @@ Start with the brief catalog; fall back to search when the library is too big fo
 
 - `retag <id ...>`, `retag --status <untagged|tagged|reviewed>`, or `retag --all` clears tags so the next tagging pass redoes them.
 - `rebuild` adds entries for files dropped straight into `media/` and reports entries whose files are gone. `rebuild --prune` removes those missing entries.
+- `clean-frames` deletes leftover frames workdirs for entries that are already tagged or gone. `clean-frames --all` also clears untagged ones. `frames` recreates them on demand.
 - `init` creates an empty library. `ingest` does this automatically, so it's rarely needed.
-- `doctor` checks uv, Python, dependencies, the library location, and whether the index matches the files.
+- `doctor` checks uv, Python, dependencies, the library location, whether the index matches the files, and whether stale frames are piling up.

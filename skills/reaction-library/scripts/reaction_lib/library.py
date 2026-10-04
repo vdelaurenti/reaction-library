@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -86,6 +87,42 @@ def list_entries(root: Path, status: str | None = None) -> list[dict]:
         for e in sorted(entries, key=lambda e: e["id"])
         if status is None or e["status"] == status
     ]
+
+
+def tree_size(path: Path) -> int:
+    return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
+
+
+def remove_frames(root: Path, entry_id: str) -> int:
+    """Delete one entry's frames workdir. Returns the bytes freed."""
+    workdir = root / ".frames" / entry_id
+    if not workdir.is_dir():
+        return 0
+    size = tree_size(workdir)
+    shutil.rmtree(workdir, ignore_errors=True)
+    return size
+
+
+def stale_frames(root: Path, index: dict) -> list[str]:
+    """Frames workdirs no longer needed: the entry is already tagged, or gone from the index."""
+    frames_root = root / ".frames"
+    if not frames_root.is_dir():
+        return []
+    entries = index["entries"]
+    return sorted(
+        p.name for p in frames_root.iterdir()
+        if p.is_dir() and entries.get(p.name, {}).get("status") != "untagged"
+    )
+
+
+def clean_frames(root: Path, all_folders: bool = False) -> dict:
+    """Remove stale frames workdirs, or every one with all_folders. `frames` recreates them on demand."""
+    frames_root = root / ".frames"
+    if all_folders:
+        targets = sorted(p.name for p in frames_root.iterdir() if p.is_dir()) if frames_root.is_dir() else []
+    else:
+        targets = stale_frames(root, load_index(root))
+    return {"removed": targets, "freed_bytes": sum(remove_frames(root, t) for t in targets)}
 
 
 def now_iso() -> str:

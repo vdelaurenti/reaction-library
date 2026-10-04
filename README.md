@@ -50,7 +50,7 @@ By default it lives in `~/.reaction-library/` (`C:\Users\<you>\.reaction-library
 ```
 index.json     the tags
 media/         your files, renamed to their ids
-.frames/       extracted keyframes (safe to delete)
+.frames/       keyframes for tagging, deleted once a tag is saved (safe to delete)
 ```
 
 To keep it somewhere else, for example a synced folder, set `REACTION_LIBRARY`:
@@ -78,6 +78,7 @@ uv run skills/reaction-library/scripts/reaction_library.py <command>
 | `review <ids>` | Mark tags as approved |
 | `retag <ids> \| --all \| --status S` | Clear tags so they get redone |
 | `rebuild [--prune]` | Reconcile the index with `media/` |
+| `clean-frames [--all]` | Delete leftover keyframes (`--all` includes untagged entries) |
 | `search "<moment>" [--emotion T] [--humor T] [--kind K] [--limit N] [--exclude IDS] [--format brief\|full]` | Find candidates |
 | `get <id>` | Show one entry |
 | `catalog [--brief] [--max N] [--emotion T] [--humor T] [--kind K]` | One line per tagged entry |
