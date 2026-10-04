@@ -79,6 +79,25 @@ def test_skill_delegates_tagging_and_keeps_review_human():
     assert "up to 3" in text
 
 
+def test_persona_guide_is_linked_and_covers_restraint():
+    skill_dir = ROOT / "skills" / "reaction-library"
+    assert "persona.md" in (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+    text = (skill_dir / "persona.md").read_text(encoding="utf-8")
+    for needle in ("## When not to", "## Frequency", "avoid_when", "--exclude", "## Your taste profile",
+                   "never instead of them"):
+        assert needle in text, f"persona.md is missing {needle!r}"
+
+
+def test_persona_taste_profile_uses_real_vocabulary():
+    skill_dir = ROOT / "skills" / "reaction-library"
+    vocab = json.loads((skill_dir / "vocabulary.json").read_text(encoding="utf-8"))
+    text = (skill_dir / "persona.md").read_text(encoding="utf-8")
+    for field, key in (("humor_prefer", "humor_mechanisms"), ("humor_avoid", "humor_mechanisms"),
+                       ("emotions_prefer", "emotions")):
+        terms = re.search(rf"{field}: \[(.*?)\]", text).group(1).split(", ")
+        assert set(terms) <= set(vocab[key]), f"{field} uses terms not in vocabulary.json: {terms}"
+
+
 def test_readme_manual_install_clones_first():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "git clone https://github.com/vdelaurenti/reaction-library" in text

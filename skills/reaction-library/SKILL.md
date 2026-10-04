@@ -66,6 +66,8 @@ Start with the brief catalog; fall back to search when the library is too big fo
 
 `catalog` without `--brief` prints every entry with kind, file, humor and `use_when` in full, for maintenance rather than picking.
 
+**Reacting without being asked?** If your persona sends reactions on its own initiative, read `<skill-dir>/persona.md` first: when to react and when not to, how often, and a taste profile to fill in.
+
 ## Maintenance
 
 - `retag <id ...>`, `retag --status <untagged|tagged|reviewed>`, or `retag --all` clears tags so the next tagging pass redoes them.
