@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-COMMANDS = ["init", "ingest", "list", "frames", "tag", "review", "retag", "rebuild", "search", "get", "catalog", "doctor"]
+COMMANDS = ["init", "ingest", "list", "frames", "tag", "review", "retag", "rebuild", "clean-frames", "search", "get", "catalog", "doctor"]
 
 
 def test_skill_frontmatter():
