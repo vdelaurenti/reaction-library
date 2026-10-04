@@ -44,7 +44,8 @@ The library starts empty. Fill it with reactions you already like:
 
 1. **Collect.** Save 10–20 GIFs or memes into one folder, for example `~/Downloads/reactions`. Right-click "Save as" in Slack, Giphy, or a browser all work.
 2. **Add.** Ask your assistant: "Add the GIFs in ~/Downloads/reactions to my reaction library." Duplicates and unsupported files are skipped and reported.
-3. **Tag.** Ask: "Tag my new reactions." The assistant looks at each one and records what it says and when to use it, 10 at a time, then shows you the tags to approve or correct. Nothing is searchable until it's tagged.
+3. **Tag.** Ask: "Tag my new reactions." The assistant looks at each one and records what it says and when to use it, checks its own work, and tells you how many it tagged plus anything it wasn't sure about. In agents that support subagents, batches of 10 are tagged in parallel in the background, so even hundreds of GIFs don't fill up your conversation. Nothing is searchable until it's tagged.
+5. **Refine (optional).** Ask to see the tags and approve or correct them, or ask to play the quiz: you see a GIF and say when you'd send it, and your wording is added to its tag.
 4. **Use.** Ask for a moment: "Got a gif for when the build finally passes?" You get back the file path and why it fits.
 
 Add more any time; only the new ones need tagging.
@@ -57,6 +58,7 @@ By default it lives in `~/.reaction-library/` (`C:\Users\<you>\.reaction-library
 index.json     the tags
 media/         your files, renamed to their ids
 .frames/       keyframes for tagging, deleted once a tag is saved (safe to delete)
+index.lock     present only while a command is writing the index
 ```
 
 To keep it somewhere else, for example a synced folder, set `REACTION_LIBRARY`:
@@ -81,8 +83,9 @@ On macOS and Linux the script is executable too: `skills/reaction-library/script
 | `init` | Create an empty library |
 | `ingest <paths> [--move]` | Copy files or folders in, skipping duplicates |
 | `list [--status S]` | List entries (`untagged`, `tagged`, `reviewed`) |
-| `frames <id>` | Extract keyframes for tagging |
+| `frames <ids> [--separate]` | Make a contact sheet of keyframes for tagging (`--separate`: one file per frame) |
 | `tag <id> <file or ->` | Save a tag payload (JSON file, or `-` for stdin) |
+| `tag-batch <file or ->` | Save many tags from JSON Lines, one `{"id": ..., ...}` per line |
 | `review <ids>` | Mark tags as approved |
 | `retag <ids> \| --all \| --status S` | Clear tags so they get redone |
 | `rebuild [--prune]` | Reconcile the index with `media/` |

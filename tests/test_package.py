@@ -22,9 +22,10 @@ def test_skill_frontmatter():
 
 
 def test_skill_documents_every_command():
-    text = (ROOT / "skills" / "reaction-library" / "SKILL.md").read_text(encoding="utf-8")
+    skill_dir = ROOT / "skills" / "reaction-library"
+    text = "\n".join((skill_dir / name).read_text(encoding="utf-8") for name in ("SKILL.md", "tagging-worker.md"))
     for command in COMMANDS:
-        assert f"`{command}" in text, f"SKILL.md does not mention `{command}`"
+        assert f"`{command}" in text, f"neither SKILL.md nor tagging-worker.md mentions `{command}`"
 
 
 def test_plugin_manifests_agree():
@@ -57,6 +58,25 @@ def test_skill_covers_first_run():
     assert "No library at" in text
     assert "untagged waiting to be tagged" in text
     assert "batches of 10" in text
+
+
+WORKER = ROOT / "skills" / "reaction-library" / "tagging-worker.md"
+
+
+def test_worker_instructions_cover_the_whole_job():
+    text = WORKER.read_text(encoding="utf-8")
+    for needle in ("frames <id> [<id> ...]", "tag-batch", "--separate", "## Writing the analysis",
+                   "## Self-review", "Other readings", "Sender's own situation", "FLAG:", "FAILED:",
+                   "vocabulary.json", "schema.json"):
+        assert needle in text, f"tagging-worker.md is missing {needle!r}"
+
+
+def test_skill_delegates_tagging_and_keeps_review_human():
+    text = (ROOT / "skills" / "reaction-library" / "SKILL.md").read_text(encoding="utf-8")
+    assert "tagging-worker.md" in text
+    assert "## Writing the analysis" not in text, "the analysis rules live in tagging-worker.md now"
+    assert "Never run `review` unless the user approved" in text
+    assert "up to 3" in text
 
 
 def test_readme_manual_install_clones_first():

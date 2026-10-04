@@ -37,41 +37,16 @@ A new user starts with an empty library. These are normal states, not failures; 
 
 ## Tagging
 
-When the user asks to tag new media (or right after an ingest, if they want):
+When the user asks to tag new media (or right after an ingest, if they want), you coordinate and workers do the looking. Tagging is the expensive part (images plus a JSON payload per GIF), and nothing about one GIF is needed once its tag is saved, so keep it out of this conversation.
 
-1. Run `list --status untagged`. Work in batches of 10: each GIF means looking at up to four frames, so a large backlog done in one pass overloads your context. After each batch, check in with the user (step 5) and say how many are left before starting the next.
-2. For each entry, run `frames <id>` and look at **every** frame path it returns. The punchline is often in the last frame.
-3. Write the analysis as JSON (rules below) to `<workdir>/tag.json`, where `workdir` comes from the `frames` output. Use your file-writing tool, not shell echo.
-4. Run `tag <id> <workdir>/tag.json`. If it's rejected, fix exactly the problems listed and run it again. Once it's accepted, the workdir and its frames are deleted. To save a whole batch at once, write one `{"id": ..., <tag fields>}` object per line to a `.jsonl` file and run `tag-batch <file>`; it saves the valid lines and lists rejected ones by line number.
-5. After the batch, show the user a short table (id, description, use_when) and ask whether the tags look right. If they approve, run `review <id> [<id> ...]`. If they correct one, write a new payload and `tag` it again; run `frames <id>` first if you need a workdir or another look.
+1. Run `list --status untagged` and split the ids into batches of 10.
+2. **If you can start subagents** (for example Claude Code's Agent/Task tool), start one worker per batch, up to 3 at a time, each with a short brief: "Follow `<skill-dir>/tagging-worker.md` to tag these ids: …". The library is locked during writes, so parallel workers are safe. Start the next batch as one finishes.
+   **If you can't,** follow `<skill-dir>/tagging-worker.md` yourself, one batch per turn, and tell the user how many are left after each.
+3. Each worker reports one line per GIF: `id | description | use_when; ...`, with `| FLAG: …` when it wasn't sure, or `id | FAILED: …`. Keep these lines; don't re-fetch anything.
+4. When all batches are done, give the user a short summary, not a table: how many were tagged, then only the flagged and failed ones with their reasons. Workers have already checked their own tags against a self-review checklist, so the tags are usable as they are.
+5. Offer optional refinement: they can ask to see the tags (print the lines you kept as a table), or play the quiz (show GIFs blind, compare their guess with `use_when`, merge their wording in). **Never run `review` unless the user approved those specific tags**: `reviewed` means a person checked it, and search and the quiz rely on that.
 
-### Writing the analysis
-
-The allowed `humor_mechanisms` and `emotions` terms are in `<skill-dir>/vocabulary.json`; use only those. The full payload format is in `<skill-dir>/schema.json`.
-
-| Field | What to write |
-|---|---|
-| `description` | One literal sentence: who, what happens, how it ends. Name the show, film, or person only if you are sure. |
-| `humor_mechanisms` | 1–3 terms for *why* it's funny, most important first. |
-| `emotions` | 1–3 terms for what the **sender** expresses by posting it, which is not necessarily what the person in the GIF feels. |
-| `use_when` | 1–5 concrete situations, phrased the way someone would describe them in chat: "a coworker replies-all to the whole company", "the build finally passes after hours". Search matches these words, so use everyday vocabulary and vary the phrasing. |
-| `avoid_when` | Situations where it would land badly: real bad news, grief, when it could read as mocking the recipient or punching down. |
-| `tags` | Up to 10 lowercase keywords: subjects, source, catchphrases, objects. |
-| `text` | The exact caption or overlay text, or `null` if there is none. |
-
-Example:
-
-```json
-{
-  "description": "A man in an office calmly closes his laptop and stares into the distance.",
-  "humor_mechanisms": ["deadpan", "understatement"],
-  "emotions": ["exasperation", "despair"],
-  "use_when": ["a deploy fails on friday afternoon", "someone schedules a meeting that could have been an email"],
-  "avoid_when": ["someone shares genuinely bad news"],
-  "tags": ["office", "laptop", "done"],
-  "text": null
-}
-```
+To fix one tag after a correction: `frames <id>` if you need another look, write the payload following `tagging-worker.md`, then `tag <id> <file>`. It prints `{"id", "status"}`; use `get <id>` to see what's stored.
 
 ## Finding a reaction
 
