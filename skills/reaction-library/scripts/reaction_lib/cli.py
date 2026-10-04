@@ -61,9 +61,12 @@ def cmd_list(root: Path, args: argparse.Namespace) -> int:
 
 
 def cmd_frames(root: Path, args: argparse.Namespace) -> int:
-    from .media import extract_frames
+    from .media import extract_frames, extract_many
 
-    emit(extract_frames(root, get_entry(load_index(root), args.id)))
+    if len(args.ids) == 1:
+        emit(extract_frames(root, get_entry(load_index(root), args.ids[0]), separate=args.separate))
+    else:
+        emit({"results": extract_many(root, args.ids, separate=args.separate)})
     return 0
 
 
@@ -188,8 +191,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--move", action="store_true", help="delete each source after a successful copy")
     p = add("list", cmd_list, "list entries")
     p.add_argument("--status", choices=STATUSES)
-    p = add("frames", cmd_frames, "extract keyframes for tagging")
-    p.add_argument("id")
+    p = add("frames", cmd_frames, "make a contact sheet of keyframes for tagging (several ids at once is fine)")
+    p.add_argument("ids", nargs="+")
+    p.add_argument("--separate", action="store_true", help="save each keyframe on its own instead of one sheet")
     p = add("tag", cmd_tag, "save a tag payload (JSON file path, or - for stdin)")
     p.add_argument("id")
     p.add_argument("payload")

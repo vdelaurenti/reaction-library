@@ -7,13 +7,16 @@ import shutil
 from collections.abc import Iterator
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from .library import LibraryError, entry_path, index_lock, init_library, load_index, now_iso, save_index
 
 SUPPORTED_EXTS = frozenset({".gif", ".png", ".jpg", ".jpeg", ".webp"})
 ID_LEN = 10
 MAX_FRAMES = 4
+SHEET_TILE_WIDTH = 384
+SHEET_GAP = 4
+STATIC_MAX_EDGE = 768
 
 
 def sha256_file(path: Path) -> str:
@@ -119,25 +122,76 @@ def keyframe_indices(n_frames: int, k: int = MAX_FRAMES) -> list[int]:
     return sorted({round(i * (n_frames - 1) / (k - 1)) for i in range(k)})
 
 
-def extract_frames(root: Path, entry: dict) -> dict:
+def _keyframes(src: Path) -> list[Image.Image]:
+    with Image.open(src) as im:
+        frames = []
+        for index in keyframe_indices(im.n_frames):
+            im.seek(index)
+            frames.append(im.convert("RGB"))
+    return frames
+
+
+def contact_sheet(frames: list[Image.Image]) -> Image.Image:
+    """Keyframes in playback order: 2x2 for four, one row otherwise. Tiles are at most
+    SHEET_TILE_WIDTH wide (never upscaled) and numbered in their top-left corner."""
+    w, h = frames[0].size
+    tile_w = min(w, SHEET_TILE_WIDTH)
+    tile_h = max(1, round(h * tile_w / w))
+    cols, rows = (2, 2) if len(frames) == 4 else (len(frames), 1)
+    sheet = Image.new("RGB", (cols * tile_w + (cols - 1) * SHEET_GAP, rows * tile_h + (rows - 1) * SHEET_GAP),
+                      (40, 40, 40))
+    draw = ImageDraw.Draw(sheet)
+    for n, frame in enumerate(frames):
+        x, y = (n % cols) * (tile_w + SHEET_GAP), (n // cols) * (tile_h + SHEET_GAP)
+        sheet.paste(frame.resize((tile_w, tile_h)), (x, y))
+        draw.rectangle((x, y, x + 11, y + 13), fill=(0, 0, 0))
+        draw.text((x + 3, y + 1), str(n + 1), fill=(255, 255, 255))
+    return sheet
+
+
+def extract_frames(root: Path, entry: dict, separate: bool = False) -> dict:
+    """One contact sheet for the model to look at, or with separate=True each keyframe on its own."""
     src = entry_path(root, entry)
     if not src.exists():
         raise LibraryError(f"Media file missing for {entry['id']} ({entry['file']}). Run `rebuild`.")
     workdir = root / ".frames" / entry["id"]
     workdir.mkdir(parents=True, exist_ok=True)
+    for old in [*workdir.glob("frame-*.png"), workdir / "sheet.png"]:
+        old.unlink(missing_ok=True)
     if entry["kind"] == "static":
-        frames = [src]
-    else:
-        for old in workdir.glob("frame-*.png"):
-            old.unlink()
-        frames = []
         with Image.open(src) as im:
-            for n, index in enumerate(keyframe_indices(im.n_frames)):
-                im.seek(index)
-                dest = workdir / f"frame-{n}.png"
-                im.convert("RGBA").save(dest)
-                frames.append(dest)
+            too_big = max(im.size) > STATIC_MAX_EDGE
+            if too_big:
+                small = im.convert("RGB")
+                small.thumbnail((STATIC_MAX_EDGE, STATIC_MAX_EDGE))
+        if too_big:
+            small.save(workdir / "sheet.png")
+            frames = [workdir / "sheet.png"]
+        else:
+            frames = [src]
+    elif separate:
+        frames = []
+        for n, frame in enumerate(_keyframes(src)):
+            frame.save(workdir / f"frame-{n}.png")
+            frames.append(workdir / f"frame-{n}.png")
+    else:
+        contact_sheet(_keyframes(src)).save(workdir / "sheet.png")
+        frames = [workdir / "sheet.png"]
     return {"id": entry["id"], "workdir": str(workdir), "frames": [str(p) for p in frames]}
+
+
+def extract_many(root: Path, ids: list[str], separate: bool = False) -> list[dict]:
+    """extract_frames for each id; a bad id gets an error entry instead of failing the batch."""
+    entries = load_index(root)["entries"]
+    results = []
+    for entry_id in ids:
+        try:
+            if entry_id not in entries:
+                raise LibraryError(f"Unknown id: {entry_id}")
+            results.append(extract_frames(root, entries[entry_id], separate=separate))
+        except LibraryError as e:
+            results.append({"id": entry_id, "error": str(e)})
+    return results
 
 
 def rebuild(root: Path, prune: bool = False, dry_run: bool = False) -> dict:

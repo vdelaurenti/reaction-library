@@ -45,7 +45,7 @@ def test_ingest_list_frames_tag_get(run, lib, make_gif, tmp_path, payload):
 
     code, out, _ = run("frames", entry_id)
     frames = _json(out)
-    assert code == 0 and len(frames["frames"]) == 3
+    assert code == 0 and [Path(f).name for f in frames["frames"]] == ["sheet.png"]
 
     payload_file = Path(frames["workdir"]) / "tag.json"
     payload_file.write_text(json.dumps(payload), encoding="utf-8")
@@ -56,6 +56,18 @@ def test_ingest_list_frames_tag_get(run, lib, make_gif, tmp_path, payload):
     got = _json(out)
     assert got["description"] == payload["description"]
     assert got["path"] == str(lib / "media" / f"{entry_id}.gif")
+
+
+def test_frames_many_ids_and_separate(run, lib, make_gif):
+    first, second = _ingest_one(run, make_gif()), _ingest_one(run, make_gif())
+
+    code, out, _ = run("frames", first, second, "nope")
+    results = _json(out)["results"]
+    assert code == 0 and [r["id"] for r in results] == [first, second, "nope"]
+    assert "error" in results[2] and all(len(r["frames"]) == 1 for r in results[:2])
+
+    code, out, _ = run("frames", first, "--separate")
+    assert len(_json(out)["frames"]) == 3
 
 
 def test_tag_from_stdin(run, lib, make_png, payload, monkeypatch):
